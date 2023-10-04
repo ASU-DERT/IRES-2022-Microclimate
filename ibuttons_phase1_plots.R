@@ -40,9 +40,7 @@ df_Temps1 <- df_Temps1 %>%
 df_Temps1$datetime <- as.POSIXct(df_Temps1$datetime, format = "%m/%d/%y %H:%M")
 df_Temps1 <- df_Temps1 %>% 
   mutate(interval = cut(datetime, breaks = "60 min"))
-#df_Temps1$interval <- as.POSIXct(df_Temps1$interval, format = "%m/%d/%y %H:%M")
 
-df_Temps1
 # calculate mean values for line graphs 
 df_Temps1.means <- df_Temps1 %>% 
   group_by(Type, Rainfall, interval) %>% 
@@ -54,9 +52,8 @@ df_Temps1.means
 p1 <- ggplot(df_Temps1.means, aes(x=interval, y=Temp_mean, color=Type)) + 
   aes(group=Type) +
   geom_errorbar(aes(ymin=Temp_mean-se, ymax=Temp_mean+se), width=0.1) +
-  geom_line(aes(color=Type)) +
+  geom_line(aes(color=Type, linetype=Type)) +
   geom_point(size=0.5) +
-  #annotate('rect', xmin=7, xmax=8.5, ymin=0, ymax=150, alpha=.5, fill='#54b8e3') +
   xlab("Time") + 
   ylab("Temperature (ºC)") +
   scale_color_manual(values = my_colors) +
@@ -73,4 +70,3 @@ p1 <- ggplot(df_Temps1.means, aes(x=interval, y=Temp_mean, color=Type)) +
   facet_grid(~Rainfall) 
 p1
 
-#p1 + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))

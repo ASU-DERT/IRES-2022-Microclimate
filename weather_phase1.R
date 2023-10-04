@@ -11,7 +11,7 @@ coeff <- 100
 weather_phase1$Datetime <- as.POSIXct(weather_phase1$Datetime, format = "%m/%d/%y %H:%M")
 
 p1 <- ggplot(weather_phase1, aes(x=Datetime)) +
-  geom_bar(aes(y=Fog), stat = "identity", fill='#54b8e3') +
+  geom_bar(aes(y=Fog), stat = "identity", fill='black') +
   geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
   geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
   ylim(0,1) +
@@ -24,7 +24,8 @@ p1 <- ggplot(weather_phase1, aes(x=Datetime)) +
   theme_bw() +
   theme(text = element_text(size = 15)) +
   theme(panel.grid.major = element_blank()) +
-  theme(panel.grid.minor = element_blank())
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 p1
-p1 + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
 
