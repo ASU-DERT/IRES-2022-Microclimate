@@ -2,15 +2,18 @@
 # HThroop wrote script on August 2, 2022 
 # HThroop made minor tweaks on Sept 20, 2022
 # SSmamia rewrote script Sept 25, 2023
-setwd("/Users/Siena/Desktop/microclimate")
+
+#setwd("/Users/Siena/Desktop/microclimate") # will not allow others to run your code
+# see https://www.tidyverse.org/blog/2017/12/workflow-vs-script/
 
 library(tidyverse)
 library(scales)
+library(here)
 
 my_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 
 #import dataset
-df_microphase1=read.csv("microphase1.csv",header=TRUE)
+df_microphase1=read.csv(here("microphase1.csv"),header=TRUE) #HT modified for "here"
 df_microphase1$Rainfall <- factor(df_microphase1$Rainfall) 
 
 
