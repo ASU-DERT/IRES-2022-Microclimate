@@ -1,9 +1,12 @@
-setwd("/Users/Siena/Desktop/microclimate")
+
+#setwd("/Users/Siena/Desktop/microclimate") # will not allow others to run your code
+# see https://www.tidyverse.org/blog/2017/12/workflow-vs-script/
 
 library(tidyverse)
+library(here)
 
 #import dataset
-weather_phase1 =read.csv("Gobabebmet_phase1.csv",header=TRUE)
+weather_phase1 = read.csv(here("Gobabebmet_phase1.csv"),header=TRUE)
 
 # Value used to transform the data
 coeff <- 100
@@ -15,7 +18,7 @@ p1 <- ggplot(weather_phase1, aes(x=Datetime)) +
   geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
   geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
   ylim(0,1) +
-  scale_x_datetime(labels=format("%H:%M"), expand=c(0,0)) +
+  scale_x_datetime(labels=format("%H:%M"), expand= c(0,0)) + # expand should make it possible to remove gaps, but I'm not sure how with datetime
   xlim(c(as.POSIXct('07/24/22 11:00', format = "%m/%d/%y %H:%M"),
         as.POSIXct('07/26/22 7:00', format = "%m/%d/%y %H:%M"))) +
   scale_y_continuous(name = "Fog (mm)", sec.axis = sec_axis(~.*coeff, name="Humidity (%)"),expand=c(0,0)) +
