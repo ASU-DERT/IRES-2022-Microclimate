@@ -15,7 +15,8 @@ my_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 #import dataset
 df_microphase1=read.csv(here("microphase1.csv"),header=TRUE) #HT modified for "here"
 df_microphase1$Rainfall <- factor(df_microphase1$Rainfall) 
-
+# use 'as_datetime' from lubridate to change Datetime to POSIXct format
+df_microphase1$Datetime <- as_datetime(df_microphase1$Datetime, format = "%m/%d/%y %H:%M", tz = "Africa/Johannesburg")
 
 # calculate litter wet and dry masses
 df_microphase1$LitterWetMass <- df_microphase1$Sample_mass - df_microphase1$SandMasswBag # sample wet mass at collection
@@ -55,5 +56,22 @@ p1 <- ggplot(df_microphase1.means, aes(x=Datetime, y=LitterMoisture_mean, color=
 p1
 
 
-
+# The figure will need a little tweaking now that the x-axis is being recognized as a datetime object 
+p1 <- ggplot(df_microphase1.means, aes(x=Datetime, y=LitterMoisture_mean, color=Cond_spec)) + 
+  aes(group=Cond_spec) +
+  geom_errorbar(aes(ymin=LitterMoisture_mean-se, ymax=LitterMoisture_mean+se), width=0.1) +
+  geom_line(aes(color=Cond_spec, linetype=Cond_spec)) +
+  geom_point(aes(shape=Cond_spec)) +
+ # annotate('rect', xmin=7, xmax=8.5, ymin=-5, ymax=150, alpha=.5, fill='#54b8e3') +
+  xlab("Collection Time") + 
+  ylab("Litter Moisture (% by mass)") +
+  scale_color_manual(values = my_colors) +
+  theme_bw() +
+  theme(text = element_text(size = 20)) +
+  theme(panel.grid.major = element_blank()) +
+ theme(panel.grid.minor = element_blank()) +
+  scale_y_continuous(expand=c(0,0)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(~Rainfall) 
+p1
 
