@@ -2,7 +2,9 @@
 # HThroop wrote script on August 2, 2022 
 # HThroop made minor tweaks on Sept 20, 2022
 # SSmania adjusted code to be used for iButton data in place of litter moisture Sep 27, 2023
-setwd("/Users/Siena/Desktop/microclimate")
+
+#setwd("/Users/Siena/Desktop/microclimate") # will not allow others to run your code
+# see https://www.tidyverse.org/blog/2017/12/workflow-vs-script/
 
 library(tidyverse)
 library(ggplot2)
@@ -10,11 +12,15 @@ library(scales)
 library(dplyr)
 library(data.table)
 library(lubridate)
+library(here) # solves the setwd issue
 
 my_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 
 #read csv with manually made datetime column
-df_Temps1=read.csv('Microphase1_iButtons_ALL_dt.csv')
+df_Temps1=read.csv(here('Microphase1_iButtons_ALL_dt.csv'))
+# HT: the data type for datetime is 'chr' -- we need to explictly define this as a datetime format
+# use 'as_datetime' from lubridate to change Datetime to POSIXct format
+df_Temps1$datetime <- as_datetime(df_Temps1$datetime, format = "%m/%d/%y %H:%M", tz = "Africa/Johannesburg")
 
 
 #add rainfall based on quadrat
