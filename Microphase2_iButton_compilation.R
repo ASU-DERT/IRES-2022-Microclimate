@@ -17,6 +17,7 @@ library(dplyr)
 # note that identifying info can also be extracted from file path if needed
 ( test = read.csv(allfiles[1], #read in the first file listed in "allfiles"
                   header = TRUE,
+                  row.names = NULL,
                   col.names = c("Date", "Time", "Temperature") ) ) #add column headers
 
 ( allnames = str_split( allfiles[1], pattern = "/", simplify = TRUE) ) #create a matrix of strings for file info
@@ -42,6 +43,6 @@ microphase2_iButtons_df = map_dfr(allfiles, read_fun) # combine all the files
 microphase2_iButtons_df$loggertype <- "iButton" #add a column for the kind of logger used (iButton in this case)
 
 # change time from 12 h to 24 h time
-microphase2_iButtons_df$Time <- format(as.POSIXct(microphase2_iButtons_df$Time,format='%I:%M:%S %p'),format="%H:%M:%S")
+#microphase2_iButtons_df$Time <- format(as.POSIXct(microphase2_iButtons_df$Time,format='%I:%M:%S %p'),format="%H:%M:%S")
 
 write.csv(microphase2_iButtons_df,'Microphase2_ibuttons.csv',row.names=FALSE)
