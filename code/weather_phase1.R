@@ -1,7 +1,4 @@
 
-#setwd("/Users/Siena/Desktop/microclimate") # will not allow others to run your code
-# see https://www.tidyverse.org/blog/2017/12/workflow-vs-script/
-
 library(tidyverse)
 library(here)
 

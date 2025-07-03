@@ -2,23 +2,21 @@
 # HThroop wrote script on August 2, 2022 
 # HThroop made minor tweaks on Sept 20, 2022
 # SSmania adjusted code to be used for iButton data in place of litter moisture Sep 27, 2023
+# HThroop updated file locations on July 2, 2025
 
-#setwd("/Users/Siena/Desktop/microclimate") # will not allow others to run your code
-# see https://www.tidyverse.org/blog/2017/12/workflow-vs-script/
+#### HT Note (2025-07-02): THIS DOES NOT SEEM TO BE THE MOST RECENT VERSION (For Fig 2) ***
+## LIKELY DEPRECATED FILE
 
 library(tidyverse)
-library(ggplot2)
 library(scales)
-library(dplyr)
 library(data.table)
 library(lubridate)
-library(here) # solves the setwd issue
+library(here) 
 
 my_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 
 #read csv with manually made datetime column
-df_Temps1=read.csv(here('Microphase1_iButtons_ALL_dt.csv'))
-
+df_Temps1=read.csv(here("data", 'Microphase1_iButtons_ALL_dt.csv'))
 
 #add rainfall based on quadrat
 df_Temps1 <- df_Temps1 %>% 
@@ -41,16 +39,14 @@ df_Temps1 <- df_Temps1 %>%
   ))
 
 df_Temps1$datetime <- as.POSIXct(df_Temps1$datetime, format = "%m/%d/%y %H:%M")
-df_Temps1 <- df_Temps1 %>% 
+df_Temps1 <- df_Temps1 |> 
   mutate(interval = cut(datetime, breaks = "60 min"))
-# I think this mutate step is causing the issue. Interval is a factor rather than a POSIXct and we can't convert to POSIXct since 
-# some of the values for interval have a time and some do not. I'm not sure why it drops the time for the 00:00:xx values -- see
-# if you can fix than and the rest of the problem should go away!
 
 # calculate mean values for line graphs 
-df_Temps1.means <- df_Temps1 %>% 
-  group_by(Type, Rainfall, interval) %>% 
-  summarise(Temp_mean=mean(temperature, na.rm=TRUE), n=n(), sd=sd(temperature, na.rm=TRUE), se=sd/sqrt(n))
+df_Temps1.means <- df_Temps1 |> 
+  group_by(Type, Rainfall, interval) |> 
+  summarise(Temp_mean=mean(temperature, na.rm=TRUE), 
+            n=n(), sd=sd(temperature, na.rm=TRUE), se=sd/sqrt(n))
 df_Temps1.means$se<-as.numeric(df_Temps1.means$se)
 df_Temps1.means$Temp_mean<-as.numeric(df_Temps1.means$Temp_mean)
 df_Temps1.means
@@ -68,7 +64,7 @@ p1 <- ggplot(df_Temps1.means, aes(x=interval, y=Temp_mean, color=Type)) +
   theme(panel.grid.major = element_blank()) +
   theme(panel.grid.minor = element_blank()) +
   scale_y_continuous(expand=c(0,0)) +
- # scale_x_datetime(breaks = "2 hours") +
+  scale_x_datetime(breaks = "6 hours") +
  # scale_x_datetime(date_labels = "%m/%d/%y %H:%M",breaks = date_breaks("2 hours")) +
   #theme(axis.text.x = element_text(angle = 90, vjust = 1.0, hjust = 1.0)) +
   #scale_x_datetime(labels=format("%H:%M"), expand=c(0,0)) +
@@ -76,4 +72,5 @@ p1 <- ggplot(df_Temps1.means, aes(x=interval, y=Temp_mean, color=Type)) +
          #as.POSIXct('07/26/22 7:00', format = "%m/%d/%y %H:%M"))) +
   facet_grid(~Rainfall) 
 p1
+
 
