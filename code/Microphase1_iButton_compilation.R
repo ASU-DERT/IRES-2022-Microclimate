@@ -72,8 +72,6 @@ p1
 
 #--iButton data for microphase 1-----------
 
-df_microphase1=read.csv(here("data", "microphase1.csv"), header=TRUE)
-
 
 # list all files to read in
 ( allfiles = list.files(path = here("data", "Microphase1.iButtons"), # get a list of all files in folder
@@ -133,16 +131,21 @@ Microphase1_iButtons_df <- Microphase1_iButtons_df |>
     endsWith(quadrat, "Q10") ~ "10",
     endsWith(quadrat, "Q15") ~ "10",
   ))
+
+# Create a new combined datetime column
+Microphase1_iButtons_df <- Microphase1_iButtons_df |>
+  mutate(datetime = as.POSIXct(paste(date, time), format = "%m/%d/%y %I:%M:%S %p"))
+
 #average the temperatures per rainfall
 #aggregate(Microphase1_iButtonsRain_df$temperature, by=list(Rainfall=Microphase1_iButtonsRain_df$Rainfall), FUN=mean)
 Rain_TempAverage = Microphase1_iButtons_df |>
-  group_by(Rainfall, Datetime, condition) |>
+  group_by(Rainfall, datetime, condition) |>
   summarise(
     AverageTemp = mean(temperature)
     ) |>
   mutate(Size = NA)
 
-MicrophaseTemps = merge(Microphase1_iButtons_df,Rain_TempAverage,by="Datetime")
+MicrophaseTemps = merge(Microphase1_iButtons_df,Rain_TempAverage,by="datetime")
 
 # Preliminary Plots -------------------------------------------------------
 
@@ -152,13 +155,14 @@ p <- ggplot(Microphase1_iButtons_df, aes(x=datetime, y=temperature, line=conditi
 p + facet_grid(species ~ quadrat)
 
 #plots using rainfall instead of quadrats
-p <- ggplot(Microphase1_iButtonsRain_df, aes(x=datetime, y=temperature, line=condition, color = condition)) + geom_line()
+p <- ggplot(Microphase1_iButtons_df, aes(x=datetime, y=temperature, line=condition, color = condition)) + geom_line()
 p + facet_grid(species ~ Rainfall)
 
-#plot for rainfall with averaged temps
+#plot for rainfall with averaged temps 
+### may need to change "Rainfall.x" to "Rainfall" - currently disambiguating
 p <- ggplot(MicrophaseTemps, aes(x=datetime, y=AverageTemp, line=condition.y, color = condition.y)) + geom_line()
   #annotate("rect", xmin = as.Date("2022-07-25 23:00:00"), xmax = as.Date("2022-07-26 06:00:00"), ymin = 0, ymax = 45, alpha = 0.2)
-p + facet_grid(species ~ Rainfall)
+p + facet_grid(species ~ Rainfall.x)
 
 #p <- ggplot(MicrophaseTemps, aes(x=datetime, y=AverageTemp, line=condition.y, color = condition.y)) + geom_smooth(span=0.00001)
 #p + facet_grid(species ~ Rainfall)

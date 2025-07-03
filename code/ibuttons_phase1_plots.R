@@ -42,7 +42,7 @@ df_Temps1$datetime <- as.POSIXct(df_Temps1$datetime, format = "%m/%d/%y %H:%M")
 df_Temps1 <- df_Temps1 |> 
   mutate(interval = cut(datetime, breaks = "60 min"))
 
-# calculate mean values for line graphs 
+# calculate mean temperature values for line graphs 
 df_Temps1.means <- df_Temps1 |> 
   group_by(Type, Rainfall, interval) |> 
   summarise(Temp_mean=mean(temperature, na.rm=TRUE), 
