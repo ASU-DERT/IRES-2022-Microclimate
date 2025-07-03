@@ -1,0 +1,21 @@
+This is a list of code files and their contents for the 2022 IRES Microclimate project. 
+
+ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is Microphase1_iButtons_ALL_dt.csv, which 
+  has a manually added date-time column -- note that this is largely redundant with "Microphase1_iButton_compilation.R" that 
+  pulls together individual csv files). Calculates mean values for temperature for each species x condition x time 
+  interval. Plots a graph that is essentially Fig 2B (similar formatting) but without the fog times and ambient 
+  temperature. 
+    2025-07-03 HT assessment - seems to be out of date, both in terms of using the manually added date-time column and
+    the 
+
+Microphase1_iButton_compilation.R: 
+  - imports the leaf mass data for microphase 1
+  - graphs leaf moisture data over time - this is essentially Fig 2A but formatted differently
+  - reads in iButton and compiles iButton data for microphase 1 from the folder where it is stored 
+      (data/Microphase1.iButtons)
+  - creates poorly formatted facetted plots with temperature and moisture
+     2025-07-03 HT assessment - figures are out of date but the initial iButton data pulling and reformatting for time
+      appears to be good
+
+microphase1.R:
+- This seems to be based on ibuttons_phase1_plots.R but uses the  
