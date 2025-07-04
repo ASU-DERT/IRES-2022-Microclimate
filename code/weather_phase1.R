@@ -3,7 +3,7 @@ library(tidyverse)
 library(here)
 
 #import dataset
-weather_phase1 = read.csv(here("Gobabebmet_phase1.csv"),header=TRUE)
+weather_phase1 = read.csv(here("data", "Gobabebmet_phase1.csv"),header=TRUE)
 
 # Value used to transform the data
 coeff <- 100

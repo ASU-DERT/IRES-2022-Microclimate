@@ -14,8 +14,17 @@ Microphase1_iButton_compilation.R:
   - reads in iButton and compiles iButton data for microphase 1 from the folder where it is stored 
       (data/Microphase1.iButtons)
   - creates poorly formatted facetted plots with temperature and moisture
-     2025-07-03 HT assessment - figures are out of date but the initial iButton data pulling and reformatting for time
-      appears to be good
+     2025-07-03 HT assessment - figures are out of date but the initial iButton data pulling and reformatting for time appears to be good
 
 microphase1.R:
-- This seems to be based on ibuttons_phase1_plots.R but uses the  
+	- This pulls the leaf water content data for microphase1 (microphase1.csv)
+	- Data are plotted as Figure 2A (formatting nearly similar, although fog period is not plotting properly)
+
+microphase2.R
+	- pulls in the microphase2 leaf mass data (microphase2.csv).
+	- plots  litter moisture by collection time (separate line for burial depth)
+	- This is very similar to Fig 3B
+	
+weather_phase1.R
+- pull in the Gobabeb weather for microphase1 (Gobabebmet_phase1.csv)
+- appears to plot humidity and fog versus time, although there are issues with the code

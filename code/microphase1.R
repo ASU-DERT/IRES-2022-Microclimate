@@ -24,10 +24,9 @@ df_microphase1$LitterMoisture <- ((df_microphase1$LitterWetMass - df_microphase1
 df_microphase1.SAPE <- filter(df_microphase1, Species == "SAPE")
 df_microphase1.STSA <- filter(df_microphase1, Species == "STSA")
 
-
 # calculate mean values for line graphs 
-df_microphase1.means <- df_microphase1 %>% 
-  group_by(Cond_spec, Rainfall, Datetime) %>% 
+df_microphase1.means <- df_microphase1 |> 
+  group_by(Cond_spec, Rainfall, Datetime) |> 
   summarise(LitterMoisture_mean=mean(LitterMoisture, na.rm=TRUE), n=n(), sd=sd(LitterMoisture, na.rm=TRUE), se=sd/sqrt(n))
 df_microphase1.means$se<-as.numeric(df_microphase1.means$se)
 df_microphase1.means$LitterMoisture_mean<-as.numeric(df_microphase1.means$LitterMoisture_mean)
