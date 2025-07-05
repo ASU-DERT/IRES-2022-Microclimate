@@ -1,0 +1,28 @@
+Files in this folder are:
+
+gobabeb-auss-microphase2_withaussfog.csv
+
+gobabeb-auss-microphase2.csv
+
+Gobabebmet_phase1.csv
+
+Microphase1_iButtons_ALL_dt.csv
+
+Microphase1_iButtons_ALL.csv
+s
+
+microphase1.csv
+Data are the leaf mass data and associated variable information collected for the microphase1 experiment.
+Variables are: Species,Littercond,TYPE,Plot,Rainfall,Bag_mass1,Bag_mass2,Interval,Sample_mass,SandMasswBag,D_bagMasswSand,Drymasswbag,Date,Time,Cond_spec,Datetime
+
+microphase2.csv
+Data are the leaf mass data and associated variable information collected for the microphase2 experiment. Varibales are: Label,DEPTH,Plot,Rainfall,Interval,Sample_mass,SandMasswBag,Dryingbagmass,Drymasswbag,D_bagMasswSand,DrySandMass,TotalBagwSandMass,Date,Time,Datetime,Wmass,Dmass,Moist
+
+Sub-folders in this folder are:
+Microphase1.iButtons
+This folder contains individual csv files for each iButton logger deployed during microphase1.
+Files names are the litter type (B or G), species (SP or SS), and location (Q1-9)
+
+Microphase2.iButtons
+This folder contains individual csv files for each iButton logger deployed during microphase2.
+Files names are the depth (D0, D1, D3)  and location (Q1-15)

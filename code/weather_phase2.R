@@ -1,11 +1,13 @@
-setwd("/Users/Siena/Desktop/microclimate")
+
 
 library(tidyverse)
-
-my_colors <- c('#2ba3ff', '#06286b')
+library(here)
 
 #import dataset
-weather_phase2 =read.csv("gobabeb-auss-microphase2.csv",header=TRUE)
+weather_phase2 = read.csv(here("data", "gobabeb-auss-microphase2.csv"),header=TRUE)
+
+
+my_colors <- c('#2ba3ff', '#06286b')
 
 # Value used to transform the data
 coeff <- 100

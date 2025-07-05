@@ -1,5 +1,7 @@
 This is a list of code files and their contents for the 2022 IRES Microclimate project. 
 
+
+FILES EXISTING IN REPO SET UP BY SIEN:
 ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is Microphase1_iButtons_ALL_dt.csv, which 
   has a manually added date-time column -- note that this is largely redundant with "Microphase1_iButton_compilation.R" that 
   pulls together individual csv files). Calculates mean values for temperature for each species x condition x time 
@@ -27,4 +29,9 @@ microphase2.R
 	
 weather_phase1.R
 - pull in the Gobabeb weather for microphase1 (Gobabebmet_phase1.csv)
-- appears to plot humidity and fog versus time, although there are issues with the code
+- appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
+
+weather_phase2.R
+- pull in the Gobabeb and Aussininas weather for microphase2 (gobabeb-auss-microphase2.csv)
+- appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
+- Data are in wide format but columns for Aussininais and Gobabeb data not properly called. Neeed to do do some comparisons and decide how to use Aus data for missing Gobabeb data. 
