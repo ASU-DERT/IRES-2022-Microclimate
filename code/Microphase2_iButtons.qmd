@@ -1,0 +1,131 @@
+---
+title: "IRES 2022 Microclimate ibutton phase2"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This file works up iButton data from the 2022 IRES Microclimate project, microphase 2. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. This file can be pulled in for future analyses (start at L1 section).
+
+Data are graphed by logger and by treatment.
+
+File written: 9 July 2025, Heather Throop\
+Last update: 9 July 2025, Heather Throop
+
+## Preparation Steps
+
+```{r}
+#| echo: false
+#| label: load packages 
+
+library(here) # v. 0.1
+library(stringr) # v. 1.2.0
+library(purrr) # v. 0.2.3
+library(tidyverse)
+library(lubridate)
+```
+
+## L0 to L1 iButton Compilation
+
+### This can be skipped - use compiled L1 data (see next header)
+
+```{r}
+#| label: pull in L0 iButton data
+
+### NOTE - THIS SECTION CAN BE SKIPPED AND THE L1 file can be used
+
+#--read and work up data for microphase 2-----------
+
+# list all files to read in
+( allfiles = list.files(path = here("data", "Microphase2.iButtons.L0"), # get a list of all files in folder
+                        pattern = ".csv", # only files that end in .csv
+                        full.names = TRUE,  # return the complete file path (and not just the file name)
+                        recursive = TRUE) ) # include the child folders in the directory
+
+# read in one file and extract identifying information from the file name
+( test = read.csv(allfiles[1], #read in the first file listed in "allfiles"
+                  skip = 1, # skip the first 1 lines (extraneous header info)
+                  header = FALSE, # there are no column headers
+                  col.names = c("date", "time", "unit", "temperature") ) ) #add column headers
+
+( allnames = str_split( allfiles[1], pattern = "/", simplify = TRUE) ) #create a matrix of strings for file info
+
+str_extract(allnames[, ncol(allnames)], pattern = "Q[1-9]") #extract the block number from the file name
+test$depth = str_extract(allnames[, ncol(allnames)], pattern = "D[0-3]") #extract the burial depth from the file name and add as a column
+test$quadrat = str_extract(allnames[, ncol(allnames)], pattern = "Q[1-9]") #extract the quadrat from the file name and add as a column
+
+# function to do the above reading and extracting identifying information (so this can be done on all the files)
+read_fun = function(path) {
+  test = read.csv(path, 
+                  skip = 1,
+                  header = FALSE,
+                  col.names = c("date", "time", "temperature") )
+  allnames = str_split( path, pattern = "/", simplify = TRUE)
+ test$depth = str_extract(allnames[, ncol(allnames)], pattern = "D[0-3]") #extract the burial   depth from the file name and add as a column
+  test$quadrat = str_extract(allnames[, ncol(allnames)], pattern = "Q[1-9]") #extract the     quadrat from the file name and add as a column
+  test
+}
+
+read_fun(allfiles[1]) # use to test the function on an individual file (this can be tested on any of them)
+
+Microphase2_iButtons_df = map_dfr(allfiles, read_fun) # combine all the files
+Microphase2_iButtons_df$loggertype <- "iButton" #add a column for the kind of logger used (iButton in this case)
+
+# add a column that calculates the elapsed time since the experiment started
+
+#create a column assigning rainfall to plot numbers
+Microphase2_iButtons_df <- Microphase2_iButtons_df |>
+  mutate(rainfall = case_when(
+    endsWith(quadrat, "Q1") ~ "0",
+    endsWith(quadrat, "Q2") ~ "5",
+    endsWith(quadrat, "Q3") ~ "10",
+    endsWith(quadrat, "Q4") ~ "10",
+    endsWith(quadrat, "Q5") ~ "0",
+    endsWith(quadrat, "Q6") ~ "5",
+    endsWith(quadrat, "Q7") ~ "5",
+    endsWith(quadrat, "Q8") ~ "10",
+    endsWith(quadrat, "Q9") ~ "0",
+    endsWith(quadrat, "Q10") ~ "5",
+    endsWith(quadrat, "Q11") ~ "0",
+    endsWith(quadrat, "Q12") ~ "10",
+    endsWith(quadrat, "Q13") ~ "0",
+    endsWith(quadrat, "Q14") ~ "5",
+    endsWith(quadrat, "Q15") ~ "10",
+  ))
+
+# Create a new combined datetime column
+Microphase2_iButtons_df <- Microphase2_iButtons_df |>
+  mutate(datetime = as.POSIXct(paste(date, time), 
+                               format = "%m/%d/%y %H:%M:%S", 
+                               tz = "Africa/Johannesburg"))
+```
+
+```{r}
+#| label: clean data & save L1 file
+
+# Define the experiment start time in Johannesburg time zone
+start_time_m2 <- as.POSIXct("2022-07-30 12:00:00", tz = "Africa/Johannesburg")
+
+# Filter, remove NAs, and compute elapsed time in hours
+Microphase2_iButtons_df <- Microphase2_iButtons_df |>
+  filter(datetime >= start_time_m2 & datetime <= start_time_m2 + lubridate::hours(48)) |>
+  mutate(elapsed_time = as.numeric(difftime(datetime, start_time_m2, units = "hours")))
+
+# write the dataframe as a L1 file ready for future analysis and plotting
+write_csv(Microphase2_iButtons_df, here("data", "microphase2_iButtons_L1.csv"))
+  
+```
+
+## L1 iButton Work-Up
+
+7/9/2025 HT stopped here
+
+Analysis of data can start here, pulling in the compiled and cleaned L1 file with all iButton data.
+
+```{r}
+
+```

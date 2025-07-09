@@ -1,28 +1,24 @@
 This is a list of code files and their contents for the 2022 IRES Microclimate project. 
 
+Kestrel_compilation.qmd:
+This file works up Kestrel data from the 2022 IRES Microclimate project, microphase 1 and 2. Original Kestrel csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. This file can be pulled in for future analyses (start at L1 section).  Note that exact locations where Kestrels were deployed are currently not known.
 
-FILES EXISTING IN REPO SET UP BY SIEN:
-ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is Microphase1_iButtons_ALL_dt.csv, which 
-  has a manually added date-time column -- note that this is largely redundant with "Microphase1_iButton_compilation.R" that 
-  pulls together individual csv files). Calculates mean values for temperature for each species x condition x time 
-  interval. Plots a graph that is essentially Fig 2B (similar formatting) but without the fog times and ambient 
-  temperature. 
-    2025-07-03 HT assessment - seems to be out of date, both in terms of using the manually added date-time column and
-    the 
+litter_WHC_trail.R:
+This code works up data, creates plots, and analyzed data from the litter water holding capacity (WHC) trial. Note that file needs to be updated as it has been moved from the original location. 
 
-Microphase1_iButton_compilation.R: 
-  - imports the leaf mass data for microphase 1
-  - graphs leaf moisture data over time - this is essentially Fig 2A but formatted differently
-  - reads in iButton and compiles iButton data for microphase 1 from the folder where it is stored 
-      (data/Microphase1.iButtons)
-  - creates poorly formatted facetted plots with temperature and moisture
-     2025-07-03 HT assessment - figures are out of date but the initial iButton data pulling and reformatting for time appears to be good
+Microphase1_iButtons.qmd: 
+This file works up iButton data from the 2022 IRES Microclimate project, microphase 1. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. The L1 file can be pulled in for future analyses (start at L1 section).
+To do: work up L1 timeseries data by logger and treatment.
 
-microphase1.R:
+microphase1_litter.R:
 	- This pulls the leaf water content data for microphase1 (microphase1.csv)
 	- Data are plotted as Figure 2A (formatting nearly similar, although fog period is not plotting properly)
 
-microphase2.R
+Microphase2_iButtons.qmd: 
+This file works up iButton data from the 2022 IRES Microclimate project, microphase 2. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. The L1 file can be pulled in for future analyses (start at L1 section).
+To do: work up L1 timeseries data by logger and treatment.
+
+microphase2_litter.R
 	- pulls in the microphase2 leaf mass data (microphase2.csv).
 	- plots  litter moisture by collection time (separate line for burial depth)
 	- This is very similar to Fig 3B
@@ -35,3 +31,12 @@ weather_phase2.R
 - pull in the Gobabeb and Aussininas weather for microphase2 (gobabeb-auss-microphase2.csv)
 - appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
 - Data are in wide format but columns for Aussininais and Gobabeb data not properly called. Neeed to do do some comparisons and decide how to use Aus data for missing Gobabeb data. 
+
+R SCRIPT FILES THAT ARE NOW IN AN ARCHIVE FOLDER (zARCHIVD)
+ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is Microphase1_iButtons_ALL_dt.csv, which 
+  has a manually added date-time column -- note that this is largely redundant with "Microphase1_iButton_compilation.R" that 
+  pulls together individual csv files). Calculates mean values for temperature for each species x condition x time 
+  interval. Plots a graph that is essentially Fig 2B (similar formatting) but without the fog times and ambient 
+  temperature. 
+    2025-07-03 HT assessment - seems to be out of date
+Microphase1_littermoisture.R: This file works up litter moisture data for microphase 1. microphase1.R appears to be more recent and complete code.
