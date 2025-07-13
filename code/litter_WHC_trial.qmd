@@ -1,0 +1,142 @@
+---
+title: "Litter WHC trial"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This code works up data from the 2022 IRES Microclimate project, litter water holding capacity experiment. Original csv file is pulled in, cleaned, analyzed, and graphed.
+
+File written: 12 July 2025, Heather Throop
+
+## Preparation Steps
+
+```{r}
+#| echo: false
+#| label: load packages 
+
+library(here) 
+library(tidyverse)
+library(bestNormalize)
+library(car)        # for Levene's test
+library(ggplot2)
+library(emmeans)    # for post hoc Tukey
+```
+
+## Data Ingestion & Calculations
+
+```{r}
+#| label: read in data and calculate derived variables
+litterWHC_df <- read_csv(here("data","litter_WHC.csv"))
+litterWHC_df <- na.omit(litterWHC_df)
+
+#calculate derived moisture variables
+litterWHC_df <- litterWHC_df |>
+  mutate(
+    # calculate litter dry mass for each sample (no bag)
+    LitterDryMassnoBag = LitterDryMasswBag - Bag_Mass, 
+    WHC = ((MassT0noBag - LitterDryMassnoBag)/LitterDryMassnoBag)*100
+  )
+
+# explore WHC data with a histogram
+hist(litterWHC_df$WHC,
+     main = "Histogram of Litter Water Holding Capacity",
+     xlab = "WHC (% by mass)",
+     col = "skyblue",
+     border = "white",
+     breaks = 20)
+
+litterWHC_df <- litterWHC_df |>
+  filter(WHC <= 300)
+
+# recode species names to functional types
+litterWHC_df$Species <- recode(litterWHC_df$Species,
+                               "SAPE" = "broadleaf",
+                               "STSA" = "grass")
+```
+
+## Data Plotting
+
+```{r}
+#| label: WHC plot
+
+p_WHC <- litterWHC_df |>
+  ggplot(aes(x = Species, y = WHC, fill = LitterCond)) +
+    geom_boxplot() +
+    scale_fill_manual(values = c("green" = "#2E8B57", "brown" = "#8B4513")) +
+    labs(
+      x = "Species",
+      y = "Litter Water Holding Capacity (% by mass)",
+      fill = ""
+    ) +
+    theme_classic(base_size = 16)+
+    theme(legend.position = c(0.2, 0.2))  # Adjust position as needed
+p_WHC
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "litter_WHC.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+## Data Analysis
+
+```{r}
+#| label: ANOVA assumptions
+
+# Step 1: Check normality of WHC
+hist(litterWHC_df$WHC, main = "Histogram of WHC", xlab = "WHC")
+qqnorm(litterWHC_df$WHC); qqline(litterWHC_df$WHC)
+shapiro_test <- shapiro.test(litterWHC_df$WHC)
+print(shapiro_test)
+
+# Step 2: Transform WHC if not normal
+if (shapiro_test$p.value < 0.05) {
+  bn_obj <- bestNormalize(litterWHC_df$WHC)
+  litterWHC_df$WHC_trans <- predict(bn_obj)
+  used_var <- "WHC_trans"
+  message("Data was transformed using: ", bn_obj$chosen_transform)
+} else {
+  used_var <- "WHC"
+  message("No transformation applied.")
+}
+
+# Create interaction term for grouping
+litterWHC_df <- litterWHC_df |>
+  mutate(Group = interaction(Species, LitterCond))
+
+# Run Levene's test
+leveneTest(get(used_var) ~ Group, data = litterWHC_df)
+```
+
+```{r}
+#| label: two-way ANOVA
+
+# Two-way ANOVA model
+aov_model <- aov(reformulate(c("Species", "LitterCond", "Species:LitterCond"), used_var), data = litterWHC_df)
+summary(aov_model)
+
+# Tukey pairwise comparisons for main effects and interaction
+emm <- emmeans(aov_model, ~ Species * LitterCond)
+
+# Main effect comparisons
+tukey_species <- pairs(emmeans(aov_model, ~ Species), adjust = "tukey")
+tukey_littercond <- pairs(emmeans(aov_model, ~ LitterCond), adjust = "tukey")
+
+# Interaction comparisons
+tukey_interaction <- pairs(emm, adjust = "tukey")
+
+# Print results
+print(tukey_species)
+print(tukey_littercond)
+print(tukey_interaction)
+
+# Optional: plot interaction
+emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
+  labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
+```
