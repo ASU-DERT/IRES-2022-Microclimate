@@ -4,7 +4,7 @@ Kestrel_compilation.qmd:
 This file works up Kestrel data from the 2022 IRES Microclimate project, microphase 1 and 2. Original Kestrel csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. This file can be pulled in for future analyses (start at L1 section).  Note that exact locations where Kestrels were deployed are currently not known.
 
 litter_WHC_trail.qmd:
-This code works up data, creates plots, and analyzed data from the litter water holding capacity (WHC) trial. 
+This code works up data, creates plots, and analyzes data from the litter water holding capacity (WHC) trial. 
 
 Microphase1_iButtons.qmd: 
 This file works up iButton data from the 2022 IRES Microclimate project, microphase 1. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. The L1 file can be pulled in for future analyses (start at L1 section).

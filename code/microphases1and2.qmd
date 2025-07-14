@@ -1,0 +1,247 @@
+---
+title: "microphase1and2_litter"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
+
+File written: 13 July 2025, Heather Throop
+
+TO DO: change plot so t
+
+## Preparation Steps
+
+```{r}
+#| echo: false
+#| label: load packages 
+
+library(here) 
+library(tidyverse)
+library(bestNormalize)
+library(car)        # for Levene's test
+library(ggplot2)
+library(emmeans)    # for post hoc Tukey
+
+sessionInfo()
+```
+
+# Microphase 1
+
+## Data Ingestion & Calculations
+
+```{r}
+#| label: read in data and calculate derived variables
+micro1_df <- read_csv(here("data","microphase1_litter_data.csv"))
+micro1_df <- na.omit(micro1_df) # remove lines with NAs
+
+## data preparations
+# change rainfall to categorical (these are treatment names)
+micro1_df$Rainfall <- as.factor(micro1_df$Rainfall) 
+# use 'as_datetime' from lubridate to change Datetime to POSIXct format
+micro1_df$Datetime <- as_datetime(micro1_df$Datetime, format = "%m/%d/%y %H:%M", tz = "Africa/Johannesburg")
+
+# Define the experiment start time in Johannesburg time zone
+start_time <- as.POSIXct("2022-07-24 11:00:00", tz = "Africa/Johannesburg")
+
+# Compute elapsed time in hours
+micro1_df <- micro1_df |>
+  mutate(elapsed_time = as.numeric(difftime(Datetime, start_time, units = "hours")))
+
+# recode species names to functional types, calling recode explictly as it seems to be masked
+micro1_df$Species <- dplyr::recode(micro1_df$Species,
+                                   "SAPE" = "broadleaf",
+                                   "STSA" = "grass")
+
+##calculate derived variables
+# calculate litter wet mass, dry mass, and percent moisture at collection
+micro1_df <- micro1_df |> 
+  mutate(LitterWetMass = Sample_mass - SandMasswBag, # sample wet mass at collection
+         LitterDryMass = Drymasswbag - D_bagMasswSand, # sample dry mass at collection
+         LitterMoisturePct = ((LitterWetMass - LitterDryMass) / LitterDryMass) *100)   
+
+# explore LitterMoisturePct data with a histogram
+hist(micro1_df$LitterMoisturePct,
+     main = "Histogram of Litter Moisture (%)",
+     xlab = "WHC (% by mass)",
+     col = "skyblue",
+     border = "white",
+     breaks = 20)
+
+# There is two outlier where LitterMoisturePct is over 100 while other values in the same group are ~5 (for elapsed_time = 12) and 85 (for elapsed_time = 48). Remove these.
+micro1_df <- micro1_df |>
+  filter(!(Species == "grass" &
+           Littercond == "Green" &
+           elapsed_time == 12 &
+           LitterMoisturePct > 100),
+         !(Species == "broadleaf" &
+           Littercond == "Brown" &
+           elapsed_time == 48 &
+           LitterMoisturePct > 100))
+```
+
+## Data Plotting
+
+```{r}
+#| label: calculate means
+
+# calculate mean values for line graphs 
+micro1_means <- micro1_df |> 
+  group_by(Species, Littercond, Rainfall, TYPE, elapsed_time) |> 
+  summarise(LitterMoisture_mean=mean(LitterMoisturePct, na.rm=TRUE), 
+            n=n(), 
+            sd=sd(LitterMoisturePct, na.rm=TRUE), 
+            se=sd/sqrt(n))
+```
+
+```{r}
+#| label: litter moisture plot
+
+### PROBABLY DON"T USE THIS
+
+micro1_litter_p <- micro1_means |>
+  ggplot(aes(x = elapsed_time, y = LitterMoisture_mean, 
+                       color = as.factor(Rainfall),
+                       shape = as.factor(Rainfall),
+                       linetype = as.factor(Rainfall),
+                       group = Rainfall)) +
+  annotate("rect", xmin = 35, xmax = 45, ymin = -5, ymax = Inf, 
+           alpha = 0.1, fill = "skyblue2") +
+  geom_line() +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
+                    ymax = LitterMoisture_mean + se), width = 0.5) +
+  facet_grid(rows = vars(Littercond), cols = vars(Species)) +
+  # Custom colors, shapes, and line types for Rainfall
+  scale_color_manual(values = c("0" = "red", "5" = "green", "10" = "blue")) +
+  scale_shape_manual(values = c("0" = 16,  # filled circle
+                                "5" = 15,  # filled square
+                                "10" = 17  # filled triangle
+                                )) +
+  scale_linetype_manual(values = c("0" = "solid",
+                                   "5" = "dotted",
+                                   "10" = "dashed")) +
+  labs(x = "Elapsed Time",
+       y = "Litter Moisture (% by mass)",
+       color = "",
+       shape = "",
+       linetype = "") +
+  theme_classic(base_size = 16) +
+ theme(
+  panel.spacing = unit(1, "lines"),
+  strip.background = element_rect(fill = "gray80", color = "black"),
+  strip.text = element_text(color = "black"),
+  panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)) +
+  scale_y_continuous(limits = c(-5, NA)) +
+  theme(
+  legend.position = c(0.05, 0.2),  # x and y between 0 (left/bottom) and 1 (right/top)
+  legend.justification = c("left", "bottom"),
+  legend.background = element_rect(fill = alpha('white', 0.6), color = NA))
+micro1_litter_p
+
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase1_littermoisture.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+#| label: litter moisture by rainfall 
+
+# USE THIS - NEEDS EDITING FOR FORMATTING
+
+micro1_means |>
+  ggplot(aes(x = elapsed_time, y = LitterMoisture_mean,
+                               shape = TYPE,
+                               linetype = TYPE,
+                               group = TYPE)) +
+  annotate("rect", xmin = 35, xmax = 45, ymin = 0, ymax = Inf, 
+           alpha = 0.2, fill = "skyblue3") +
+  geom_line() +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
+                    ymax = LitterMoisture_mean + se), width = 0.5) +
+  facet_grid(. ~ Rainfall) +
+  labs(x = "Elapsed Time",
+       y = "Litter Moisture (% by mass)",
+       shape = "Type",
+       linetype = "Type") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+  ) +
+  scale_y_continuous(limits = c(0, NA))
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase1_littermoisture_by_ppt.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+## Data Analysis
+
+```{r}
+#| label: ANOVA assumptions
+
+# Step 1: Check normality of WHC
+hist(litterWHC_df$WHC, main = "Histogram of WHC", xlab = "WHC")
+qqnorm(litterWHC_df$WHC); qqline(litterWHC_df$WHC)
+shapiro_test <- shapiro.test(litterWHC_df$WHC)
+print(shapiro_test)
+
+# Step 2: Transform WHC if not normal
+if (shapiro_test$p.value < 0.05) {
+  bn_obj <- bestNormalize(litterWHC_df$WHC)
+  litterWHC_df$WHC_trans <- predict(bn_obj)
+  used_var <- "WHC_trans"
+  message("Data was transformed using: ", bn_obj$chosen_transform)
+} else {
+  used_var <- "WHC"
+  message("No transformation applied.")
+}
+
+# Create interaction term for grouping
+litterWHC_df <- litterWHC_df |>
+  mutate(Group = interaction(Species, LitterCond))
+
+# Run Levene's test
+leveneTest(get(used_var) ~ Group, data = litterWHC_df)
+```
+
+```{r}
+#| label: two-way ANOVA
+
+# Two-way ANOVA model
+aov_model <- aov(reformulate(c("Species", "LitterCond", "Species:LitterCond"), used_var), data = litterWHC_df)
+summary(aov_model)
+
+# Tukey pairwise comparisons for main effects and interaction
+emm <- emmeans(aov_model, ~ Species * LitterCond)
+
+# Main effect comparisons
+tukey_species <- pairs(emmeans(aov_model, ~ Species), adjust = "tukey")
+tukey_littercond <- pairs(emmeans(aov_model, ~ LitterCond), adjust = "tukey")
+
+# Interaction comparisons
+tukey_interaction <- pairs(emm, adjust = "tukey")
+
+# Print results
+print(tukey_species)
+print(tukey_littercond)
+print(tukey_interaction)
+
+# Optional: plot interaction
+emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
+  labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
+```
