@@ -14,7 +14,7 @@ This file works up iButton data from the 2022 IRES Microclimate project, microph
 Data are graphed by logger and by treatment. (NOT YET...)
 
 File written: 9 July 2025, Heather Throop\
-Last update: 9 July 2025, Heather Throop
+Last update: 13 July 2025, Heather Throop
 
 ## Preparation Steps
 
@@ -117,6 +117,9 @@ Microphase1_iButtons_df <- Microphase1_iButtons_df |>
   filter(datetime >= start_time & datetime <= start_time + lubridate::hours(48)) |>
   mutate(elapsed_time = as.numeric(difftime(datetime, start_time, units = "hours")))
 
+# change rainfall to a factor
+Microphase1_iButtons_df$rainfall <- as.factor(Microphase1_iButtons_df$rainfall)
+
 # write the dataframe as a L1 file ready for future analysis and plotting
 write_csv(Microphase1_iButtons_df, here("data", "microphase1_iButtons_L1.csv"))
   
@@ -124,49 +127,79 @@ write_csv(Microphase1_iButtons_df, here("data", "microphase1_iButtons_L1.csv"))
 
 ## L1 iButton Work-Up
 
-7/9/2025 HT stopped here - the code below was moved form a prior file
+```{r}
+#| label: individual logger plots
 
-Analysis of data can start here, pulling in the compiled and cleaned L1 file with all iButton data.
+all_iButtons_M1_p <- Microphase1_iButtons_df |>
+  ggplot(aes(x = elapsed_time, y = temperature,
+                           color = rainfall,
+                           group = quadrat)) +
+  geom_line() +
+  facet_grid(rows = vars(condition), cols = vars(species)) +
+  labs(x = "Elapsed Time",
+       y = "Temperature (°C)",
+       color = "Logger") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black")
+  )
+all_iButtons_M1_p
+
+
+# note that a few loggers look different, particularly in the 0 mm plots
+```
 
 ```{r}
-#average the temperatures per rainfall
-#aggregate(Microphase1_iButtonsRain_df$temperature, by=list(Rainfall=Microphase1_iButtonsRain_df$Rainfall), FUN=mean)
-Rain_TempAverage = Microphase1_iButtons_df |>
-  group_by(Rainfall, datetime, condition) |>
-  summarise(
-    AverageTemp = mean(temperature)
-    ) |>
-  mutate(Size = NA)
+#| label: reduce L1 logger data to a single smoothed line
 
-MicrophaseTemps = merge(Microphase1_iButtons_df,Rain_TempAverage,by="datetime")
+# plot with a loess function
+Micro1_temperature_means_p <- Microphase1_iButtons_df |>
+  ggplot(aes(x = elapsed_time, y = temperature,
+                           color = as.factor(rainfall),
+                           group = interaction(rainfall, species, condition))) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 1) +
+  facet_grid(rows = vars(condition), cols = vars(species)) +
+  labs(x = "Elapsed Time (hours)",
+       y = "Temperature (°C)",
+       color = "Rainfall (mm)") +
+  theme_classic(base_size = 16)
+Micro1_temperature_means_p
 
-# Preliminary Plots -------------------------------------------------------
-
-# preliminary plots with all data
-# super messy plots of all the data
-p <- ggplot(Microphase1_iButtons_df, aes(x=datetime, y=temperature, line=condition, color = condition)) + geom_line()
-p + facet_grid(species ~ quadrat)
-
-#plots using rainfall instead of quadrats
-p <- ggplot(Microphase1_iButtons_df, aes(x=datetime, y=temperature, line=condition, color = condition)) + geom_line()
-p + facet_grid(species ~ Rainfall)
-
-#plot for rainfall with averaged temps 
-### may need to change "Rainfall.x" to "Rainfall" - currently disambiguating
-p <- ggplot(MicrophaseTemps, aes(x=datetime, y=AverageTemp, line=condition.y, color = condition.y)) + geom_line()
-  #annotate("rect", xmin = as.Date("2022-07-25 23:00:00"), xmax = as.Date("2022-07-26 06:00:00"), ymin = 0, ymax = 45, alpha = 0.2)
-p + facet_grid(species ~ Rainfall.x)
-
-#p <- ggplot(MicrophaseTemps, aes(x=datetime, y=AverageTemp, line=condition.y, color = condition.y)) + geom_smooth(span=0.00001)
-#p + facet_grid(species ~ Rainfall)
-
-
-#merge litter moisture data with ibutton data
-iMoisture = merge(MicrophaseTemps, df_microphase1.means, by="datetime")
-
-layered <- ggplot(iMoisture, aes(x=datetime, y=LitterMoisture_mean, color=Rainfall)) +
-  geom_line(aes(linetype=Rainfall, color=Rainfall), size = 1) +
-  geom_point() +
-  geom_line(aes(y=AverageTemp/10)) +
-  scale_y_continuous("LitterMoisture_mean", sec.axis = sec_axis(~.*10, name="Temperature (C)"))
 ```
+
+COMBIED THE FIGURE WITH PATCHWORK
+
+library(patchwork)
+
+combined_plot \<- micro1_litter_p2 / micro1_temp_p + plot_layout(heights = c(1, 1)) combined_plot
+
+```{r}
+#| label: NEEDS WORK HERE
+
+# THIS NEEDS TO BE FIXED AND ADDED TO THE BOTTOM OF THE LITTER MICRO1 litter mass graph
+
+micro1_temp_p <- Microphase1_iButtons_df |>
+  ggplot(aes(x = elapsed_time, y = temperature,
+             color = as.factor(rainfall),
+                           group = interaction(rainfall, species, quadrat, condition))) +
+  geom_smooth(method = "loess", span = 0.2, se = TRUE, linewidth = 1) +
+  facet_grid(. ~ rainfall, labeller = labeller(rainfall = function(x) paste0(x, " mm"))) +
+ # scale_color_manual(values = TYPE_colors) +
+  labs(x = "Elapsed Time",
+       y = "Temperature (°C)",
+       color = "") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    legend.position = "none"
+  )
+micro1_temp_p
+
+```
+
+\

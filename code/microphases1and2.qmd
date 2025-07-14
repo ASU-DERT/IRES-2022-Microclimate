@@ -57,6 +57,12 @@ micro1_df <- micro1_df |>
 micro1_df$Species <- dplyr::recode(micro1_df$Species,
                                    "SAPE" = "broadleaf",
                                    "STSA" = "grass")
+# recode TYPE to condition and functional types, calling recode explictly as it seems to be masked
+micro1_df$TYPE <- dplyr::recode(micro1_df$TYPE,
+                                   "BSP" = "brown broadleaf",
+                                   "BSS" = "brown grass",
+                                   "GSP" = "green broadleaf",
+                                   "GSS" = "green grass")
 
 ##calculate derived variables
 # calculate litter wet mass, dry mass, and percent moisture at collection
@@ -100,9 +106,7 @@ micro1_means <- micro1_df |>
 ```
 
 ```{r}
-#| label: litter moisture plot
-
-### PROBABLY DON"T USE THIS
+#| label: litter moisture plot by species and condition - NOT USED
 
 micro1_litter_p <- micro1_means |>
   ggplot(aes(x = elapsed_time, y = LitterMoisture_mean, 
@@ -155,24 +159,30 @@ ggsave(filename =
 ```{r}
 #| label: litter moisture by rainfall 
 
-# USE THIS - NEEDS EDITING FOR FORMATTING
+TYPE_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 
-micro1_means |>
+micro1_litter_p2 <- micro1_means |>
   ggplot(aes(x = elapsed_time, y = LitterMoisture_mean,
-                               shape = TYPE,
-                               linetype = TYPE,
-                               group = TYPE)) +
-  annotate("rect", xmin = 35, xmax = 45, ymin = 0, ymax = Inf, 
-           alpha = 0.2, fill = "skyblue3") +
+             color = TYPE,
+             shape = TYPE,
+             linetype = TYPE,
+             group = TYPE)) +
+  annotate("rect", xmin = 33, xmax = 44, ymin = -5, ymax = Inf, 
+           alpha = 0.2, fill = "#54b8e3") +
   geom_line() +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
-                    ymax = LitterMoisture_mean + se), width = 0.5) +
-  facet_grid(. ~ Rainfall) +
+                    ymax = LitterMoisture_mean + se), 
+                width = 0.5,
+                linetype = "solid") +
+  facet_grid(. ~ Rainfall, labeller = labeller(Rainfall = function(x) paste0(x, " mm"))) +
+  scale_color_manual(values = TYPE_colors) +
+  scale_shape_manual(values = c(16, 17, 16, 17)) +
   labs(x = "Elapsed Time",
        y = "Litter Moisture (% by mass)",
-       shape = "Type",
-       linetype = "Type") +
+       shape = "",
+       linetype = "",
+       color = "") +
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
@@ -180,7 +190,15 @@ micro1_means |>
     strip.text = element_text(color = "black"),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
   ) +
-  scale_y_continuous(limits = c(0, NA))
+  scale_y_continuous(limits = c(-5, 155), expand = c(0, 0)) +
+  theme(
+    legend.position = c(0.01, 0.45),  
+    legend.justification = c("left", "center")) +
+  theme(
+  legend.spacing.x = unit(0.3, "cm"),   # reduce spacing between items
+  legend.text = element_text(size = 12) # reduce text size
+)
+micro1_litter_p2
 
 # save the plot
 ggsave(filename = 
@@ -194,54 +212,11 @@ ggsave(filename =
 ```{r}
 #| label: ANOVA assumptions
 
-# Step 1: Check normality of WHC
-hist(litterWHC_df$WHC, main = "Histogram of WHC", xlab = "WHC")
-qqnorm(litterWHC_df$WHC); qqline(litterWHC_df$WHC)
-shapiro_test <- shapiro.test(litterWHC_df$WHC)
-print(shapiro_test)
 
-# Step 2: Transform WHC if not normal
-if (shapiro_test$p.value < 0.05) {
-  bn_obj <- bestNormalize(litterWHC_df$WHC)
-  litterWHC_df$WHC_trans <- predict(bn_obj)
-  used_var <- "WHC_trans"
-  message("Data was transformed using: ", bn_obj$chosen_transform)
-} else {
-  used_var <- "WHC"
-  message("No transformation applied.")
-}
-
-# Create interaction term for grouping
-litterWHC_df <- litterWHC_df |>
-  mutate(Group = interaction(Species, LitterCond))
-
-# Run Levene's test
-leveneTest(get(used_var) ~ Group, data = litterWHC_df)
 ```
 
 ```{r}
 #| label: two-way ANOVA
 
-# Two-way ANOVA model
-aov_model <- aov(reformulate(c("Species", "LitterCond", "Species:LitterCond"), used_var), data = litterWHC_df)
-summary(aov_model)
 
-# Tukey pairwise comparisons for main effects and interaction
-emm <- emmeans(aov_model, ~ Species * LitterCond)
-
-# Main effect comparisons
-tukey_species <- pairs(emmeans(aov_model, ~ Species), adjust = "tukey")
-tukey_littercond <- pairs(emmeans(aov_model, ~ LitterCond), adjust = "tukey")
-
-# Interaction comparisons
-tukey_interaction <- pairs(emm, adjust = "tukey")
-
-# Print results
-print(tukey_species)
-print(tukey_littercond)
-print(tukey_interaction)
-
-# Optional: plot interaction
-emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
-  labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
 ```

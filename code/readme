@@ -10,10 +10,6 @@ Microphase1_iButtons.qmd:
 This file works up iButton data from the 2022 IRES Microclimate project, microphase 1. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. The L1 file can be pulled in for future analyses (start at L1 section).
 To do: work up L1 timeseries data by logger and treatment.
 
-microphase1_litter.R:
-	- This pulls the leaf water content data for microphase1 (microphase1.csv)
-	- Data are plotted as Figure 2A (formatting nearly similar, although fog period is not plotting properly)
-
 Microphase2_iButtons.qmd: 
 This file works up iButton data from the 2022 IRES Microclimate project, microphase 2. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. The L1 file can be pulled in for future analyses (start at L1 section).
 To do: work up L1 timeseries data by logger and treatment.
@@ -22,7 +18,12 @@ microphase2_litter.R
 	- pulls in the microphase2 leaf mass data (microphase2.csv).
 	- plots  litter moisture by collection time (separate line for burial depth)
 	- This is very similar to Fig 3B
-	
+
+microphases1and2.qmd
+- pulls in the microphase1 leaf mass data and cleans it
+- plots microphase1 leaf mass data relative to species and litter conditions (NOT USED for ms) and rainfall treatment
+
+
 weather_phase1.R
 - pull in the Gobabeb weather for microphase1 (Gobabebmet_phase1.csv)
 - appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
@@ -40,3 +41,8 @@ ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is
   temperature. 
     2025-07-03 HT assessment - seems to be out of date
 Microphase1_littermoisture.R: This file works up litter moisture data for microphase 1. microphase1.R appears to be more recent and complete code.
+
+microphase1_litter.R:
+	- This pulls the leaf water content data for microphase1 (microphase1.csv)
+	- Data are plotted as Figure 2A (formatting nearly similar, although fog period is not plotting properly)
+
