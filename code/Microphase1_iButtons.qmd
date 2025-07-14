@@ -128,6 +128,13 @@ write_csv(Microphase1_iButtons_df, here("data", "microphase1_iButtons_L1.csv"))
 ## L1 iButton Work-Up
 
 ```{r}
+#| label: read in L1 CSV
+Microphase1_iButtons_df <- read_csv(here("data","microphase1_iButtons_L1.csv"))
+
+Microphase1_iButtons_df$rainfall <- as.factor(Microphase1_iButtons_df$rainfall)
+```
+
+```{r}
 #| label: individual logger plots
 
 all_iButtons_M1_p <- Microphase1_iButtons_df |>
@@ -138,7 +145,7 @@ all_iButtons_M1_p <- Microphase1_iButtons_df |>
   facet_grid(rows = vars(condition), cols = vars(species)) +
   labs(x = "Elapsed Time",
        y = "Temperature (°C)",
-       color = "Logger") +
+       color = "Rainfall") +
   theme_classic(base_size = 16) +
   theme(
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
@@ -154,12 +161,17 @@ all_iButtons_M1_p
 ```{r}
 #| label: reduce L1 logger data to a single smoothed line
 
+### NOTE: this should print a ribbon w SE but it does not, apparently since not multiple logs per time (time of logs not perfectly aligned). Data can be binned first to have multiple points to get an SE.
+
+rainfall_colors <- c("red","green","blue")
+
 # plot with a loess function
 Micro1_temperature_means_p <- Microphase1_iButtons_df |>
   ggplot(aes(x = elapsed_time, y = temperature,
                            color = as.factor(rainfall),
                            group = interaction(rainfall, species, condition))) +
   geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 1) +
+  scale_colour_manual(values = rainfall_colors) +
   facet_grid(rows = vars(condition), cols = vars(species)) +
   labs(x = "Elapsed Time (hours)",
        y = "Temperature (°C)",
