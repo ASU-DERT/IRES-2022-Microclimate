@@ -24,14 +24,15 @@ microphases1and2.qmd
 - plots microphase1 leaf mass data relative to species and litter conditions (NOT USED for ms) and rainfall treatment
 
 
-weather_phase1.R
+weather_compilation.qmd
 - pull in the Gobabeb weather for microphase1 (Gobabebmet_phase1.csv)
-- appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
-
-weather_phase2.R
+- plot humidity and fog versus time
+- plot soil and air temporature versus time
 - pull in the Gobabeb and Aussininas weather for microphase2 (gobabeb-auss-microphase2.csv)
-- appears to plot humidity and fog versus time, although there are issues with the code (seems to be an attempt at 2 y-axes that didn't quite do the trick)
-- Data are in wide format but columns for Aussininais and Gobabeb data not properly called. Neeed to do do some comparisons and decide how to use Aus data for missing Gobabeb data. 
+- compare Gobabeb and Aussininas weather data for microphase2
+- replace missing Gobabeb data with Aussininas data where appropriate
+- plot humidity and fog versus time
+- plot soil and air temporature versus time
 
 R SCRIPT FILES THAT ARE NOW IN AN ARCHIVE FOLDER (zARCHIVD)
 ibuttons_phase1_plots.R: reads in iButton data for phase 1 project (data file is Microphase1_iButtons_ALL_dt.csv, which 

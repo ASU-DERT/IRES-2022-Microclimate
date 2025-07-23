@@ -11,9 +11,12 @@ editor_options:
 
 This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
-File written: 13 July 2025, Heather Throop
+File written: 13 July 2025, Heather Throop\
+Last updated: 22 July 2025, Heather Throop
 
-TO DO: change plot so t
+TO DO:\
+add ambient temperature to microphase 1 & 2 temperature plots?\
+Replace moon and sun icons with transparent ones
 
 ## Preparation Steps
 
@@ -27,8 +30,17 @@ library(bestNormalize)
 library(car)        # for Levene's test
 library(ggplot2)
 library(emmeans)    # for post hoc Tukey
+library(cowplot)
+library(ggpattern)
 
+# define colors
 TYPE_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
+DEPTH_colors <- c("#166610", "tan", "#6e4424")
+Rainfall_colors <- c("red", "green", "blue")
+
+# Read in the moon and sun images as grobs
+moon_img <- rasterGrob(readPNG("moon.png"), interpolate = TRUE)
+sun_img <- rasterGrob(readPNG("sun.png"), interpolate = TRUE)
 
 sessionInfo()
 ```
@@ -54,6 +66,12 @@ start_time <- as.POSIXct("2022-07-24 11:00:00", tz = "Africa/Johannesburg")
 # Compute elapsed time in hours
 micro1_df <- micro1_df |>
   mutate(elapsed_time = as.numeric(difftime(Datetime, start_time, units = "hours")))
+
+# define night (6 pm to 6 am) periods during the experiment (relative to elapsed time)
+night1_start_m1 <- 7
+night1_end_m1 <- 19
+night2_start_m1 <- 31
+night2_end_m1 <- 43
 
 # recode species names to functional types, calling recode explictly as it seems to be masked
 micro1_df$Species <- dplyr::recode(micro1_df$Species,
@@ -167,8 +185,16 @@ micro1_litter_p2 <- micro1_means |>
              shape = TYPE,
              linetype = TYPE,
              group = TYPE)) +
-  annotate("rect", xmin = 33, xmax = 44, ymin = -5, ymax = Inf, 
-           alpha = 0.2, fill = "#54b8e3") +
+  # add blue box for fog
+  geom_vline(xintercept = c(33, 44), linetype = "dashed", 
+             color = "#54b8e3", linewidth = 1) +
+  # add fog label
+  annotate("text", x = 38.5, y = 130, label = "Fog", color = "#54b8e3", size = 5) +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
+           ymin = -5, ymax = Inf, alpha = 0.2, fill = "grey") +
+  annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
+           ymin = -5, ymax = Inf, alpha = 0.2, fill = "grey") +
   geom_line() +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
@@ -178,27 +204,35 @@ micro1_litter_p2 <- micro1_means |>
   facet_grid(. ~ Rainfall, labeller = labeller(Rainfall = function(x) paste0(x, " mm"))) +
   scale_color_manual(values = TYPE_colors) +
   scale_shape_manual(values = c(16, 17, 16, 17)) +
-  labs(x = "Elapsed Time",
+  labs(x = NULL,
        y = "Litter Moisture (% by mass)",
-       shape = "",
-       linetype = "",
-       color = "") +
+       color = NULL) +   # remove the title above legend
+  guides(
+    color = guide_legend(override.aes = list(shape = c(16, 17, 16, 17), linetype = c("solid", "dashed", "solid", "dashed"))),
+    shape = "none",      # <-- hide shape legend
+    linetype = "none"    # <-- hide linetype legend
+  ) +
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
     strip.background = element_rect(fill = "gray80", color = "black"),
     strip.text = element_text(color = "black"),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    legend.position = c(0.02, 0.8),
+    legend.justification = c("left", "top"),
+    legend.background = element_blank(),
+    legend.key.size = unit(0.8, "lines"),
+    legend.spacing.x = unit(0.3, "cm"),
+    legend.text = element_text(size = 10)
   ) +
   scale_y_continuous(limits = c(-5, 155), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(0, 50)) +
-  theme(
-    legend.position = c(0.01, 0.45),  
-    legend.justification = c("left", "center")) +
-  theme(
-  legend.spacing.x = unit(0.3, "cm"),   # reduce spacing between items
-  legend.text = element_text(size = 12) # reduce text size
-)
+  scale_x_continuous(limits = c(0, 52)) +
+   # Add moon images in night areas
+  annotation_custom(moon_img, xmin = 7, xmax = 19, ymin = 136, ymax = 148) +
+  annotation_custom(moon_img, xmin = 31, xmax = 43, ymin = 136, ymax = 148) +
+  # Add sun images in day areas
+  annotation_custom(sun_img, xmin = 19, xmax = 31, ymin = 136, ymax = 148) 
+
 micro1_litter_p2
 
 # save the plot
@@ -214,7 +248,8 @@ ggsave(filename =
 #| label: read in L1 iButton CSV
 Microphase1_iButtons_df <- read_csv(here("data","microphase1_iButtons_L1.csv"))
 
-Microphase1_iButtons_df$rainfall <- as.factor(Microphase1_iButtons_df$rainfall)
+# change to a factor and change capitalization for consistency
+Microphase1_iButtons_df$Rainfall <- as.factor(Microphase1_iButtons_df$rainfall)
 
 # add new column for TYPE that combines species and condition (to be comparable with litter data)
 Microphase1_iButtons_df <- Microphase1_iButtons_df |>
@@ -238,30 +273,35 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
              shape = TYPE,
              linetype = TYPE,
              group = TYPE)) +
+  # add blue box for fog
+  geom_vline(xintercept = c(33, 44), linetype = "dashed", 
+             color = "#54b8e3", linewidth = 1) +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+  annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
   geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 1) +
-  annotate("rect", xmin = 33, xmax = 44, ymin = 5, ymax = Inf, 
-           alpha = 0.2, fill = "#54b8e3") +
-  facet_grid(. ~ rainfall, labeller = labeller(rainfall = function(x) paste0(x, " mm"))) +
+  facet_grid(. ~ Rainfall, labeller = labeller(Rainfall = function(x) paste0(x, " mm"))) +
   scale_color_manual(values = TYPE_colors) +
+  scale_linetype_manual(values = c("brown broadleaf" = "solid",
+                                   "brown grass" = "dashed",
+                                   "green broadleaf" = "solid",
+                                   "green grass" = "dashed")) +
+  scale_x_continuous(limits = c(0, 52)) +
+  scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
   labs(x = "Elapsed Time",
-       y = "Temperature (C)",
+       y = "Temperature (°C)",
+       color = "",
        shape = "",
-       linetype = "",
-       color = "") +
+       linetype = "") +
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
     strip.background = element_rect(fill = "gray80", color = "black"),
     strip.text = element_text(color = "black"),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
-  ) +
-  scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(0, 48)) +
-  theme(legend.position = "none") +
-  theme(
-  legend.spacing.x = unit(0.3, "cm"),   # reduce spacing between items
-  legend.text = element_text(size = 12) # reduce text size
-)
+  )
 micro1_temp_p1
 
 # save the plot
@@ -274,25 +314,255 @@ ggsave(filename =
 ## Combine litter moisture and temperature plots
 
 ```{r}
-# NOT WORKING - need to make all the variables the same names
+#| label: Combine plots
 
-library(patchwork)
+# Extract the legend grob from the first plot
+legend_grob <- get_legend(micro1_litter_p2)
 
-micro1_combined_plot <- micro1_litter_p2 / micro1_temp_p1 + plot_layout(heights = c(1, 1))
-micro1_combined_plot
+# supress legends
+plot1_no_legend <- micro1_litter_p2 + theme(legend.position = "none")
+plot2_no_legend <- micro1_temp_p1 + theme(legend.position = "none")
 
+combined_plots <- plot_grid(plot1_no_legend, plot2_no_legend, ncol = 1, align = "v", rel_heights = c(1, 1))
+
+final_plot <- ggdraw() +
+  draw_plot(combined_plots) +
+  draw_grob(legend_grob, x = 0.02, y = 0.98, width = 0.4, height = 0.15, hjust = 0, vjust = 1) +
+  # the legend grab isn't working, so pasting it in manually from a screenshot
+  draw_image(here("code", "legend.png"), x = 0.08, y = 0.7, width = 0.15, height = 0.15, hjust = 0, vjust = 0)
+
+final_plot
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase1_litter_and_temp.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
 ```
 
-## Data Analysis
+# Microphase 2
+
+## Data Ingestion & Calculations
 
 ```{r}
-#| label: ANOVA assumptions
+#| label: read in data and calculate derived variables
+micro2_df <- read_csv(here("data","microphase2_litter_data.csv"))
+micro2_df <- na.omit(micro2_df) # remove lines with NAs
 
+## data preparations
+# change rainfall and DEPTH to categorical (these are treatment names)
+micro2_df$Rainfall <- as.factor(micro2_df$Rainfall) 
+micro2_df$DEPTH <- as.factor(micro2_df$DEPTH)
+# change Wmass, Dmass, and Moist to numeric (these are chr)
+micro2_df$LitterWetMass <- as.numeric(micro2_df$Wmass) 
+micro2_df$LitterDryMass <- as.numeric(micro2_df$Dmass) 
+micro2_df$LitterMoisturePct <- as.numeric(micro2_df$Moist) 
+# use 'as_datetime' from lubridate to change Datetime to POSIXct format
+micro2_df$Datetime <- as_datetime(micro2_df$Datetime, format = "%m/%d/%y %H:%M", tz = "Africa/Johannesburg")
 
+# Define the experiment start time in Johannesburg time zone
+start_time_m2 <- as.POSIXct("2022-07-30 12:00:00", tz = "Africa/Johannesburg")
+
+# Compute elapsed time in hours
+micro2_df <- micro2_df |>
+  mutate(elapsed_time = as.numeric(difftime(Datetime, start_time_m2, units = "hours")))
+
+# Define night start and end (6 pm to 6 am) based on elapsed time
+night1_start_m2 <- 6
+night1_end_m2 <- 18
+night2_start_m2 <- 30
+night2_end_m2 <- 42
+
+# explore LitterMoisturePct data with a histogram
+hist(micro2_df$LitterMoisturePct,
+     main = "Histogram of Litter Moisture (%)",
+     xlab = "Litter Moisture (% by mass)",
+     col = "skyblue",
+     border = "white",
+     breaks = 20)
+
+# There are three outliers where LitterMoisturePct is less than -50%. Remove these.
+micro2_df <- micro2_df |>
+  filter(!(LitterMoisturePct < -50))
+
+# A few additional points may be considered outliers, both above and below the bulk of the data. Leave these for now but may want to reconsider. 
+```
+
+## Litter Data Plotting
+
+```{r}
+#| label: calculate means
+
+# calculate mean values for line graphs 
+micro2_means <- micro2_df |> 
+  group_by(DEPTH, Rainfall, elapsed_time) |> 
+  summarise(LitterMoisture_mean=mean(LitterMoisturePct, na.rm=TRUE), 
+            n=n(), 
+            sd=sd(LitterMoisturePct, na.rm=TRUE), 
+            se=sd/sqrt(n))
 ```
 
 ```{r}
-#| label: two-way ANOVA
+#| label: plot litter moisture by rainfall and depth
 
+micro2_litter_p1 <- micro2_means |>
+  ggplot(aes(x = elapsed_time, y = LitterMoisture_mean,
+             color = Rainfall,
+             shape = Rainfall,
+             linetype = Rainfall,
+             group = Rainfall)) +
+ # add blue box for fog
+  geom_vline(xintercept = c(18, 19), linetype = "dashed", 
+             color = "#54b8e3", linewidth = 1) +
+  # add fog label
+  annotate("text", x = 19, y = 65, label = "Fog", color = "#54b8e3", size = 5) +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+  annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+  geom_line() +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
+                    ymax = LitterMoisture_mean + se), 
+                width = 0.5,
+                linetype = "solid") +
+  facet_grid(. ~ DEPTH, labeller = labeller(DEPTH = function(x) paste0(x, " mm"))) +
+  scale_color_manual(values = Rainfall_colors) +
+  scale_shape_manual(values = c(16, 17, 16, 17)) +
+  labs(x = NULL,
+       y = "Litter Moisture (% by mass)",
+       color = NULL) +   # no legend title
+  guides(
+    color = guide_legend(override.aes = list(shape = c(16, 17, 18), 
+                                    linetype = c("solid", "dashed", "dotted"))),
+    shape = "none",      # <-- hide shape legend
+    linetype = "none" ) +    # <-- hide linetype legend
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    legend.position = c(0.05, 0.8),
+    legend.justification = c("left", "top"),
+    legend.background = element_rect(fill = alpha("white", 0.7), color = "black"),
+    legend.key.size = unit(0.8, "lines"),
+    legend.spacing.x = unit(0.3, "cm"),
+    legend.text = element_text(size = 10)
+  ) +
+  scale_y_continuous(limits = c(0, 80), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(0, 48)) +
+  
+  # Add moon images in night areas
+  annotation_custom(moon_img, xmin = 10, xmax = 15, ymin = 70, ymax = 75) +
+  annotation_custom(moon_img, xmin = 34, xmax = 39, ymin = 70, ymax = 75) +
+  
+  # Add sun images in day areas
+  annotation_custom(sun_img, xmin = 21, xmax = 26, ymin = 70, ymax = 75) 
 
+micro2_litter_p1
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase2_littermoisture_by_ppt_and_depth.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
 ```
+
+## iButton Data Plotting
+
+```{r}
+#| label: read in L1 iButton CSV
+Microphase2_iButtons_df <- read_csv(here("data","microphase2_iButtons_L1.csv"))
+
+# change to a factor and change capitalization for consistency
+Microphase2_iButtons_df$Rainfall <- as.factor(Microphase2_iButtons_df$rainfall)
+
+# add new column for DEPTH that uses the same classification as the litter data
+Microphase2_iButtons_df <- Microphase2_iButtons_df |>
+  mutate(DEPTH = case_when(
+    depth == "D0" ~ "0",
+    depth == "D1"  ~ "1",
+    depth == "D3" ~ "3",
+    TRUE ~ NA_character_
+  ))
+```
+
+```{r}
+#| label: iButton temperature by rainfall 
+
+### NOTE: this should print a ribbon w SE but it does not, apparently since not multiple logs per time (time of logs not perfectly aligned). Data can be binned first to have multiple points to get an SE.
+
+micro2_temp_p1 <- Microphase2_iButtons_df |>
+  ggplot(aes(x = elapsed_time, y = temperature,
+             color = Rainfall,
+             shape = Rainfall,
+             linetype = Rainfall,
+             group = Rainfall)) +
+ # add blue box for fog
+  geom_vline(xintercept = c(18, 19), linetype = "dashed", 
+             color = "#54b8e3", linewidth = 1) +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+  annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
+           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 1) +
+  facet_grid(. ~ DEPTH, labeller = labeller(DEPTH = function(x) paste0(x, " mm"))) +
+  scale_color_manual(values = Rainfall_colors) +
+  scale_shape_manual(values = c(16, 17, 18)) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+  scale_x_continuous(limits = c(0, 48)) +
+  scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
+  labs(x = "Elapsed Time",
+       y = "Temperature (°C)",
+       color = "",
+       shape = "",
+       linetype = "") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+  )
+micro2_temp_p1
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase2_temperature_by_ppt.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+## Combine litter moisture and temperature plots
+
+```{r}
+#| label: Combine plots
+
+# Extract the legend grob from the first plot
+legend_grob <- get_legend(micro2_litter_p1)
+
+# supress legends
+plot1_no_legend <- micro2_litter_p1 + theme(legend.position = "none")
+plot2_no_legend <- micro2_temp_p1 + theme(legend.position = "none")
+
+combined_plots <- plot_grid(plot1_no_legend, plot2_no_legend, ncol = 1, align = "v", rel_heights = c(1, 1))
+
+final_plot <- ggdraw() +
+  draw_plot(combined_plots) +
+  draw_grob(legend_grob, x = 0.02, y = 0.98, width = 0.4, height = 0.15, hjust = 0, vjust = 1)# +
+  # the legend grab isn't working, so pasting it in manually from a screenshot
+ # draw_image(here("code", "legend.png"), x = 0.08, y = 0.7, width = 0.15, height = 0.15, hjust = 0, vjust = 0)
+
+final_plot
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase2_litter_and_temp.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+# 

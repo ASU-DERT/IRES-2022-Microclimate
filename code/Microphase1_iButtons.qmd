@@ -11,8 +11,6 @@ editor_options:
 
 This file works up iButton data from the 2022 IRES Microclimate project, microphase 1. Original iButton csv files (L0 data) are pulled in, annotated, cleaned, and saved as a L1 file. This file can be pulled in for future analyses (start at L1 section).
 
-Data are graphed by logger and by treatment. (NOT YET...)
-
 File written: 9 July 2025, Heather Throop\
 Last update: 13 July 2025, Heather Throop
 
