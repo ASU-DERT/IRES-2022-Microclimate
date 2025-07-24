@@ -54,8 +54,9 @@ litterWHC_df <- litterWHC_df |>
   filter(WHC <= 300)
 
 # recode species names to functional types
-litterWHC_df$Species <- recode(litterWHC_df$Species,
-                               "SAPE" = "broadleaf",
+litterWHC_df$Species <- as.factor(litterWHC_df$Species)
+litterWHC_df$Species <- dplyr::recode(litterWHC_df$Species,
+                               "SAPE" = "shrub",
                                "STSA" = "grass")
 ```
 
@@ -73,7 +74,7 @@ p_WHC <- litterWHC_df |>
       y = "Litter Water Holding Capacity (% by mass)",
       fill = ""
     ) +
-    theme_classic(base_size = 16)+
+    theme_classic(base_size = 20)+
     theme(legend.position = c(0.2, 0.2))  # Adjust position as needed
 p_WHC
 
@@ -139,4 +140,30 @@ print(tukey_interaction)
 # Optional: plot interaction
 emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
   labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
+
+
+# === Save all text output to a single TXT file ===
+sink(here("output", "stats","whc_analysis_results.txt"))
+
+cat("===== Two-Way ANOVA Summary =====\n")
+print(summary(aov_model))
+
+cat("\n\n===== Tukey Pairwise Comparisons: Species =====\n")
+print(tukey_species)
+
+cat("\n\n===== Tukey Pairwise Comparisons: LitterCond =====\n")
+print(tukey_littercond)
+
+cat("\n\n===== Tukey Pairwise Comparisons: Interaction =====\n")
+print(tukey_interaction)
+
+sink()
+
+# === Save interaction plot to PNG ===
+plot_file <- here("output", "whc_interaction_plot.png")
+
+ggplot_obj <- emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
+  labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
+
+ggsave(plot_file, ggplot_obj, width = 6, height = 4, dpi = 300)
 ```
