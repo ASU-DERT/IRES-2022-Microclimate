@@ -26,12 +26,14 @@ Replace moon and sun icons with transparent ones
 
 library(here) 
 library(tidyverse)
+library(grid)
 library(bestNormalize)
 library(car)        # for Levene's test
 library(ggplot2)
 library(emmeans)    # for post hoc Tukey
 library(cowplot)
 library(ggpattern)
+library(png)
 
 # define colors
 TYPE_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
@@ -186,15 +188,21 @@ micro1_litter_p2 <- micro1_means |>
              linetype = TYPE,
              group = TYPE)) +
   # add blue box for fog
-  geom_vline(xintercept = c(33, 44), linetype = "dashed", 
-             color = "#54b8e3", linewidth = 1) +
+  annotate("rect", xmin = 33, xmax = 44, 
+           ymin = -5, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
   # add fog label
-  annotate("text", x = 38.5, y = 130, label = "Fog", color = "#54b8e3", size = 5) +
+  # annotate("text", x = 38.5, y = 130, label = "Fog", color = "#54b8e3", size = 5) +
   # Add shaded night areas
-  annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
-           ymin = -5, ymax = Inf, alpha = 0.2, fill = "grey") +
-  annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
-           ymin = -5, ymax = Inf, alpha = 0.2, fill = "grey") +
+  annotate("rect",
+         xmin = night1_start_m1, xmax = night1_end_m1, 
+         ymin = -5, ymax = Inf,
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
+  annotate("rect", 
+         xmin = night2_start_m1, xmax = night2_end_m1, 
+         ymin = -5, ymax = Inf, 
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
   geom_line() +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
@@ -218,18 +226,19 @@ micro1_litter_p2 <- micro1_means |>
     strip.background = element_rect(fill = "gray80", color = "black"),
     strip.text = element_text(color = "black"),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
-    legend.position = c(0.02, 0.8),
+    legend.position = "top",
+    legend.key.width = unit(1.5, "cm"),
     legend.justification = c("left", "top"),
     legend.background = element_blank(),
     legend.key.size = unit(0.8, "lines"),
     legend.spacing.x = unit(0.3, "cm"),
-    legend.text = element_text(size = 10)
+    legend.text = element_text(size = 12)
   ) +
   scale_y_continuous(limits = c(-5, 155), expand = c(0, 0)) +
   scale_x_continuous(limits = c(0, 52)) +
    # Add moon images in night areas
-  annotation_custom(moon_img, xmin = 7, xmax = 19, ymin = 136, ymax = 148) +
-  annotation_custom(moon_img, xmin = 31, xmax = 43, ymin = 136, ymax = 148) +
+  annotation_custom(moon_img, xmin = 8, xmax = 18, ymin = 137, ymax = 147) +
+  annotation_custom(moon_img, xmin = 32, xmax = 42, ymin = 137, ymax = 147) +
   # Add sun images in day areas
   annotation_custom(sun_img, xmin = 19, xmax = 31, ymin = 136, ymax = 148) 
 
@@ -274,14 +283,22 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
              linetype = TYPE,
              group = TYPE)) +
   # add blue box for fog
-  geom_vline(xintercept = c(33, 44), linetype = "dashed", 
-             color = "#54b8e3", linewidth = 1) +
+  annotate("rect", xmin = 33, xmax = 44, 
+           ymin = -Inf, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
+  # add fog label
+  # annotate("text", x = 38.5, y = 130, label = "Fog", color = "#54b8e3", size = 5) +
   # Add shaded night areas
-  annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
-  annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
-  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 1) +
+  annotate("rect",
+         xmin = night1_start_m1, xmax = night1_end_m1, 
+         ymin = -Inf, ymax = Inf,
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
+  annotate("rect", 
+         xmin = night2_start_m1, xmax = night2_end_m1, 
+         ymin = -Inf, ymax = Inf, 
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
   facet_grid(. ~ Rainfall, labeller = labeller(Rainfall = function(x) paste0(x, " mm"))) +
   scale_color_manual(values = TYPE_colors) +
   scale_linetype_manual(values = c("brown broadleaf" = "solid",
@@ -290,7 +307,7 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
                                    "green grass" = "dashed")) +
   scale_x_continuous(limits = c(0, 52)) +
   scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
-  labs(x = "Elapsed Time",
+  labs(x = "Elapsed Time (hours)",
        y = "Temperature (°C)",
        color = "",
        shape = "",
@@ -298,6 +315,7 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
+    legend.position = "top",
     strip.background = element_rect(fill = "gray80", color = "black"),
     strip.text = element_text(color = "black"),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
@@ -317,7 +335,7 @@ ggsave(filename =
 #| label: Combine plots
 
 # Extract the legend grob from the first plot
-legend_grob <- get_legend(micro1_litter_p2)
+#legend_grob <- get_legend(micro1_litter_p2)
 
 # supress legends
 plot1_no_legend <- micro1_litter_p2 + theme(legend.position = "none")
@@ -326,10 +344,11 @@ plot2_no_legend <- micro1_temp_p1 + theme(legend.position = "none")
 combined_plots <- plot_grid(plot1_no_legend, plot2_no_legend, ncol = 1, align = "v", rel_heights = c(1, 1))
 
 final_plot <- ggdraw() +
-  draw_plot(combined_plots) +
-  draw_grob(legend_grob, x = 0.02, y = 0.98, width = 0.4, height = 0.15, hjust = 0, vjust = 1) +
-  # the legend grab isn't working, so pasting it in manually from a screenshot
-  draw_image(here("code", "legend.png"), x = 0.08, y = 0.7, width = 0.15, height = 0.15, hjust = 0, vjust = 0)
+  draw_image(here("code", "legend.png"),
+             x = 0.01, y = 0.92, width = 0.9, height = 0.1,
+             hjust = 0.5, vjust = 0) +
+  draw_plot(micro1_litter_p2, x = 0, y = 0, width = 1, height = 0.9)  # Shrink main plot slightly
+
 
 final_plot
 
@@ -338,6 +357,7 @@ ggsave(filename =
        here("output","figures", "microphase1_litter_and_temp.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
+
 ```
 
 # Microphase 2
