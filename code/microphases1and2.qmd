@@ -12,11 +12,9 @@ editor_options:
 This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
 File written: 13 July 2025, Heather Throop\
-Last updated: 22 July 2025, Heather Throop
+Last updated: 2 August 2025, Heather Throop
 
-TO DO:\
-add ambient temperature to microphase 1 & 2 temperature plots?\
-Replace moon and sun icons with transparent ones
+THE ANOVA ASSUMPTIONS FUNCTION IS NOT WORKING
 
 ## Preparation Steps
 
@@ -45,6 +43,97 @@ moon_img <- rasterGrob(readPNG("moon.png"), interpolate = TRUE)
 sun_img <- rasterGrob(readPNG("sun.png"), interpolate = TRUE)
 
 sessionInfo()
+```
+
+```{r}
+#| label: Three-way ANOVA function
+
+run_threeway_anova <- function(df, response_var, factors, 
+                               df_name = deparse(substitute(df)), 
+                               output_file = NULL) {
+  if (length(factors) != 3) {
+    stop("You must provide exactly three main effect variable names.")
+  }
+
+  # Clean factor names
+  factors <- trimws(factors)
+
+  # Ensure all specified variables are factors
+  df <- df |>
+    mutate(across(all_of(factors), as.factor))
+
+  # Build terms for the model
+  all_terms <- c(
+    factors,
+    paste(factors[1], factors[2], sep = ":"),
+    paste(factors[1], factors[3], sep = ":"),
+    paste(factors[2], factors[3], sep = ":"),
+    paste(factors[1], factors[2], factors[3], sep = ":")
+  )
+
+  # Create formula
+  formula <- reformulate(termlabels = all_terms, response = response_var)
+
+  # Fit models
+  aov_model <- aov(formula, data = df)
+  lm_model <- lm(formula, data = df)
+  aov_summary <- summary(aov_model)
+
+  # Capture ANOVA output as character
+  summary_txt <- capture.output(print(aov_summary))
+
+  # Store post hoc results
+  posthoc_results <- list()
+  posthoc_txt <- c()
+
+  for (factor in factors) {
+    if (nlevels(df[[factor]]) > 1) {
+      try({
+        emm <- emmeans::emmeans(lm_model, specs = factor)
+        pairs_result <- if (nlevels(df[[factor]]) > 2) {
+          emmeans::pairs(emm, adjust = "tukey")
+        } else {
+          "Only 2 levels; no pairwise comparisons needed."
+        }
+
+        posthoc_results[[factor]] <- list(
+          emm = emm,
+          pairs = pairs_result
+        )
+
+        # Capture output
+        posthoc_txt <- c(
+          posthoc_txt,
+          paste0("→ ", factor),
+          capture.output(print(emm)),
+          if (is.character(pairs_result)) pairs_result else capture.output(print(pairs_result)),
+          ""
+        )
+      })
+    }
+  }
+
+  # Combine text results
+  all_txt <- c(
+    paste0("\n=== ANOVA Results for Dataframe: ", df_name, " ==="),
+    paste0("Response variable: ", response_var),
+    paste0("Model formula: ", deparse(formula)),
+    "\n--- ANOVA Summary ---",
+    summary_txt,
+    "\n--- Post Hoc Tests ---",
+    posthoc_txt
+  )
+
+  # Return results
+  return(list(
+    aov_model = aov_model,
+    lm_model = lm_model,
+    anova_summary = aov_summary,
+    posthoc = posthoc_results
+  ))
+}
+
+
 ```
 
 # Microphase 1
@@ -77,13 +166,13 @@ night2_end_m1 <- 43
 
 # recode species names to functional types, calling recode explictly as it seems to be masked
 micro1_df$Species <- dplyr::recode(micro1_df$Species,
-                                   "SAPE" = "broadleaf",
+                                   "SAPE" = "shrub",
                                    "STSA" = "grass")
 # recode TYPE to condition and functional types, calling recode explictly as it seems to be masked
 micro1_df$TYPE <- dplyr::recode(micro1_df$TYPE,
-                                   "BSP" = "brown broadleaf",
+                                   "BSP" = "brown shrub",
                                    "BSS" = "brown grass",
-                                   "GSP" = "green broadleaf",
+                                   "GSP" = "green shrub",
                                    "GSS" = "green grass")
 
 ##calculate derived variables
@@ -101,13 +190,13 @@ hist(micro1_df$LitterMoisturePct,
      border = "white",
      breaks = 20)
 
-# There is two outlier where LitterMoisturePct is over 100 while other values in the same group are ~5 (for elapsed_time = 12) and 85 (for elapsed_time = 48). Remove these.
+# There are two outlier where LitterMoisturePct is over 100 while other values in the same group are ~5 (for elapsed_time = 12) and 85 (for elapsed_time = 48). Remove these.
 micro1_df <- micro1_df |>
   filter(!(Species == "grass" &
            Littercond == "Green" &
            elapsed_time == 12 &
            LitterMoisturePct > 100),
-         !(Species == "broadleaf" &
+         !(Species == "shrub" &
            Littercond == "Brown" &
            elapsed_time == 48 &
            LitterMoisturePct > 100))
@@ -270,9 +359,9 @@ Microphase1_iButtons_df$Rainfall <- as.factor(Microphase1_iButtons_df$rainfall)
 # add new column for TYPE that combines species and condition (to be comparable with litter data)
 Microphase1_iButtons_df <- Microphase1_iButtons_df |>
   mutate(TYPE = case_when(
-    species == "SP" & condition == "B" ~ "brown broadleaf",
+    species == "SP" & condition == "B" ~ "brown shrub",
     species == "SS" & condition == "B" ~ "brown grass",
-    species == "SP" & condition == "G" ~ "green broadleaf",
+    species == "SP" & condition == "G" ~ "green shrub",
     species == "SS" & condition == "G" ~ "green grass",
     TRUE ~ NA_character_
   ))
@@ -315,14 +404,14 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
   geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
   facet_grid(. ~ Rainfall) +
   scale_color_manual(values = TYPE_colors) +
-  scale_linetype_manual(values = c("brown broadleaf" = "solid",
+  scale_linetype_manual(values = c("brown shrub" = "solid",
                                    "brown grass" = "dashed",
-                                   "green broadleaf" = "solid",
+                                   "green shrub" = "solid",
                                    "green grass" = "dashed")) +
   scale_x_continuous(limits = c(0, 52)) +
   scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
   labs(x = "Elapsed Time (hours)",
-       y = "Temperature (°C)",
+       y = "Litter Temperature (°C)",
        color = "",
        shape = "",
        linetype = "") +
@@ -366,6 +455,124 @@ ggsave(filename =
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 
+```
+
+## Litter Moisture ANOVAs
+
+```{r}
+#| label: check ANOVA assumptions
+
+# Filter and prepare data
+micro1_df <- micro1_df |>
+  mutate(Group = interaction(Species, Littercond, Rainfall))
+
+# Step 1: Check initial normality
+hist(micro1_df$LitterMoisturePct, main = "Histogram Litter Moisture", xlab = "response var")
+qqnorm(micro1_df$LitterMoisturePct); qqline(micro1_df$LitterMoisturePct)
+
+shapiro_raw <- shapiro.test(micro1_df$LitterMoisturePct)
+cat("Shapiro-Wilk p-value (raw):", shapiro_raw$p.value, "\n")
+
+# Step 2: Apply bestNormalize if needed
+if (shapiro_raw$p.value < 0.05) {
+  bn_obj <- bestNormalize(micro1_df$LitterMoisturePct, allow_orderNorm = FALSE)
+  micro1_df <- micro1_df |>
+    mutate(LitterMoisturePct_trans = predict(bn_obj, newdata = LitterMoisturePct))
+  used_var <- "LitterMoisturePct_trans"
+  transform_used <- class(bn_obj$chosen_transform)[1]
+  
+  # Check transformed normality
+  hist(micro1_df$LitterMoisturePct_trans, 
+       main = "Histogram of Transformed Moisture", xlab = "response var_trans")
+  qqnorm(micro1_df$LitterMoisturePct_trans); qqline(micro1_df$LitterMoisturePct_trans)
+  
+  shapiro_trans <- shapiro.test(micro1_df$LitterMoisturePct_trans)
+  cat("Shapiro-Wilk p-value (transformed):", shapiro_trans$p.value, "\n")
+} else {
+  used_var <- "LitterMoisturePct"
+  transform_used <- "None"
+}
+
+# Step 3: Levene's Test
+levene_result <- leveneTest(reformulate("Group", used_var), data = micro1_df)
+
+# Step 4: Summary Table
+summary_table <- tibble(
+  variable = used_var,
+  transformed = transform_used,
+  shapiro_p_raw = shapiro_raw$p.value,
+  shapiro_p_trans = if (exists("shapiro_trans")) shapiro_trans$p.value else NA,
+  levene_p = levene_result$`Pr(>F)`[1]
+)
+print(summary_table)
+```
+
+```{r}
+#| label: three-way ANOVAs at key time points
+
+# uses the ANOVA function laoded in the preparations steps chunk
+
+# Separate into dfs for the key time points (8, 20, 32, 44)
+micro1_8h_df <- micro1_df |>
+  filter(elapsed_time == "8")
+
+micro1_20h_df <- micro1_df |>
+  filter(elapsed_time == "20")
+
+micro1_32h_df <- micro1_df |>
+  filter(elapsed_time == "32")
+
+micro1_44h_df <- micro1_df |>
+  filter(elapsed_time == "44")
+
+# Three-way ANOVA models using the function defined in the preparation steps
+result_8h <- run_threeway_anova(
+  df = micro1_8h_df,
+  response_var = used_var,
+  factors = c("Species", "Littercond", "Rainfall")
+)
+print(result_8h)
+# Save output to a text file
+sink(here::here("output", "stats", "anova_summary_micro1_8h.txt"))
+cat("\n=== ANOVA Summary ===\n")
+print(result_8h)
+sink()
+
+result_20h <- run_threeway_anova(
+  df = micro1_20h_df,
+  response_var = used_var,
+  factors = c("Species", "Littercond", "Rainfall")
+)
+print(result_20h)
+# Save output to a text file
+sink(here::here("output", "stats", "anova_summary_micro1_20h.txt"))
+cat("\n=== ANOVA Summary ===\n")
+print(result_20h)
+sink()
+
+result_32h <- run_threeway_anova(
+  df = micro1_32h_df,
+  response_var = used_var,
+  factors = c("Species", "Littercond", "Rainfall")
+)
+print(result_32h)
+# Save output to a text file
+sink(here::here("output", "stats", "anova_summary_micro1_32h.txt"))
+cat("\n=== ANOVA Summary ===\n")
+print(result_32h)
+sink()
+
+result_44h <- run_threeway_anova(
+  df = micro1_44h_df,
+  response_var = used_var,
+  factors = c("Species", "Littercond", "Rainfall")
+)
+print(result_44h)
+# Save output to a text file
+sink(here::here("output", "stats", "anova_summary_micro1_44h.txt"))
+cat("\n=== ANOVA Summary ===\n")
+print(result_44h)
+sink()
 ```
 
 # Microphase 2
@@ -609,4 +816,54 @@ ggsave(filename =
        width = 8, height = 6, dpi = 300)
 ```
 
-# 
+# Litter Moisture ANOVAs
+
+START HERE - UPDATE FOR Micro2
+
+```{r}
+#| label: check ANOVA assumptions
+
+# Filter and prepare data
+micro1_df <- micro1_df |>
+  mutate(Group = interaction(Species, Littercond, Rainfall))
+
+# Step 1: Check initial normality
+hist(micro1_df$LitterMoisturePct, main = "Histogram Litter Moisture", xlab = "response var")
+qqnorm(micro1_df$LitterMoisturePct); qqline(micro1_df$LitterMoisturePct)
+
+shapiro_raw <- shapiro.test(micro1_df$LitterMoisturePct)
+cat("Shapiro-Wilk p-value (raw):", shapiro_raw$p.value, "\n")
+
+# Step 2: Apply bestNormalize if needed
+if (shapiro_raw$p.value < 0.05) {
+  bn_obj <- bestNormalize(micro1_df$LitterMoisturePct, allow_orderNorm = FALSE)
+  micro1_df <- micro1_df |>
+    mutate(LitterMoisturePct_trans = predict(bn_obj, newdata = LitterMoisturePct))
+  used_var <- "LitterMoisturePct_trans"
+  transform_used <- class(bn_obj$chosen_transform)[1]
+  
+  # Check transformed normality
+  hist(micro1_df$LitterMoisturePct_trans, 
+       main = "Histogram of Transformed Moisture", xlab = "response var_trans")
+  qqnorm(micro1_df$LitterMoisturePct_trans); qqline(micro1_df$LitterMoisturePct_trans)
+  
+  shapiro_trans <- shapiro.test(micro1_df$LitterMoisturePct_trans)
+  cat("Shapiro-Wilk p-value (transformed):", shapiro_trans$p.value, "\n")
+} else {
+  used_var <- "LitterMoisturePct"
+  transform_used <- "None"
+}
+
+# Step 3: Levene's Test
+levene_result <- leveneTest(reformulate("Group", used_var), data = micro1_df)
+
+# Step 4: Summary Table
+summary_table <- tibble(
+  variable = used_var,
+  transformed = transform_used,
+  shapiro_p_raw = shapiro_raw$p.value,
+  shapiro_p_trans = if (exists("shapiro_trans")) shapiro_trans$p.value else NA,
+  levene_p = levene_result$`Pr(>F)`[1]
+)
+print(summary_table)
+```

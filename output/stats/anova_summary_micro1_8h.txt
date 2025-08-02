@@ -1,0 +1,69 @@
+
+=== ANOVA Summary ===
+$aov_model
+Call:
+   aov(formula = formula, data = df)
+
+Terms:
+                  Species Littercond  Rainfall Species:Littercond Species:Rainfall Littercond:Rainfall Species:Littercond:Rainfall Residuals
+Sum of Squares   0.605791   1.268661 12.194748           0.058772         0.459967            0.225353                    1.324492 23.995619
+Deg. of Freedom         1          1         2                  1                2                   2                           2        48
+
+Residual standard error: 0.7070422
+Estimated effects may be unbalanced
+
+$lm_model
+
+Call:
+lm(formula = formula, data = df)
+
+Coefficients:
+                            (Intercept)                             Speciesshrub                          LittercondGreen                                Rainfall5  
+                                -1.5170                                   0.4352                                  -0.1354                                   0.7849  
+                             Rainfall10             Speciesshrub:LittercondGreen                   Speciesshrub:Rainfall5                  Speciesshrub:Rainfall10  
+                                 1.1923                                  -0.6380                                  -0.3961                                  -0.4943  
+              LittercondGreen:Rainfall5               LittercondGreen:Rainfall10   Speciesshrub:LittercondGreen:Rainfall5  Speciesshrub:LittercondGreen:Rainfall10  
+                                -0.5291                                  -0.1250                                   1.4496                                   0.8401  
+
+
+$anova_summary
+                            Df Sum Sq Mean Sq F value   Pr(>F)    
+Species                      1  0.606   0.606   1.212    0.276    
+Littercond                   1  1.269   1.269   2.538    0.118    
+Rainfall                     2 12.195   6.097  12.197 5.21e-05 ***
+Species:Littercond           1  0.059   0.059   0.118    0.733    
+Species:Rainfall             2  0.460   0.230   0.460    0.634    
+Littercond:Rainfall          2  0.225   0.113   0.225    0.799    
+Species:Littercond:Rainfall  2  1.324   0.662   1.325    0.275    
+Residuals                   48 23.996   0.500                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+$posthoc
+$posthoc$Species
+$posthoc$Species$emm
+ Species emmean    SE df lower.CL upper.CL
+ grass   -1.035 0.129 48    -1.29   -0.775
+ shrub   -0.834 0.129 48    -1.09   -0.574
+
+Results are averaged over the levels of: Littercond, Rainfall 
+Confidence level used: 0.95 
+
+$posthoc$Species$pairs
+[1] "Only 2 levels; no pairwise comparisons needed."
+
+
+$posthoc$Littercond
+$posthoc$Littercond$emm
+ Littercond emmean    SE df lower.CL upper.CL
+ Brown      -0.789 0.129 48    -1.05   -0.529
+ Green      -1.080 0.129 48    -1.34   -0.820
+
+Results are averaged over the levels of: Species, Rainfall 
+Confidence level used: 0.95 
+
+$posthoc$Littercond$pairs
+[1] "Only 2 levels; no pairwise comparisons needed."
+
+
+
