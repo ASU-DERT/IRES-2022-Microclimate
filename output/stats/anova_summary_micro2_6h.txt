@@ -1,0 +1,44 @@
+=== ANOVA Summary ===
+               Df Sum Sq Mean Sq F value   Pr(>F)    
+DEPTH           2  5.856   2.928   67.49 6.62e-13 ***
+Rainfall        2 26.002  13.001  299.65  < 2e-16 ***
+DEPTH:Rainfall  4  3.806   0.952   21.93 3.08e-09 ***
+Residuals      36  1.562   0.043                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+=== Post Hoc: DEPTH ===
+ DEPTH  emmean    SE df lower.CL upper.CL
+ 0     -0.7407 0.161 36   -1.068   -0.413
+ 1     -0.0347 0.161 36   -0.362    0.293
+ 3      0.1968 0.161 36   -0.131    0.524
+
+Results are averaged over the levels of: Rainfall 
+Confidence level used: 0.95 
+
+--- Pairwise Comparisons (DEPTH, Tukey) ---
+ contrast        estimate    SE df t.ratio p.value
+ DEPTH0 - DEPTH1   -0.706 0.228 36  -3.094  0.0104
+ DEPTH0 - DEPTH3   -0.938 0.228 36  -4.108  0.0006
+ DEPTH1 - DEPTH3   -0.231 0.228 36  -1.014  0.5728
+
+Results are averaged over the levels of: Rainfall 
+P value adjustment: tukey method for comparing a family of 3 estimates 
+
+=== Post Hoc: Rainfall ===
+ Rainfall emmean    SE df lower.CL upper.CL
+ 0        -0.699 0.161 36   -1.026   -0.371
+ 5         0.035 0.161 36   -0.292    0.362
+ 10        0.085 0.161 36   -0.242    0.412
+
+Results are averaged over the levels of: DEPTH 
+Confidence level used: 0.95 
+
+--- Pairwise Comparisons (Rainfall, Tukey) ---
+ contrast               estimate    SE df t.ratio p.value
+ Rainfall0 - Rainfall5    -0.734 0.228 36  -3.215  0.0076
+ Rainfall0 - Rainfall10   -0.784 0.228 36  -3.434  0.0042
+ Rainfall5 - Rainfall10   -0.050 0.228 36  -0.219  0.9739
+
+Results are averaged over the levels of: DEPTH 
+P value adjustment: tukey method for comparing a family of 3 estimates 

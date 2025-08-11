@@ -616,11 +616,16 @@ hist(micro2_df$LitterMoisturePct,
      border = "white",
      breaks = 20)
 
-# There are three outliers where LitterMoisturePct is less than -50%. Remove these.
+# There are five outliers where LitterMoisturePct is less than -10%. Remove these.
 micro2_df <- micro2_df |>
-  filter(!(LitterMoisturePct < -50))
+  filter(!(LitterMoisturePct < -10))
+# filter out outliers in 1 mm DEPTH, 0 mm Rainfall with LitterMoisturePct >110%
+micro2_df <- micro2_df |>
+  filter(!(DEPTH == "1" & Rainfall == "0" & LitterMoisturePct > 110))
+# filter out outliers for rainfall 0 mm, elapsed time 42 h 
+micro2_df <- micro2_df |>
+  filter(!(Rainfall == "0" & elapsed_time == 42 & LitterMoisturePct > 35))
 
-# A few additional points may be considered outliers, both above and below the bulk of the data. Leave these for now but may want to reconsider. 
 ```
 
 ## Litter Data Plotting
@@ -818,36 +823,34 @@ ggsave(filename =
 
 # Litter Moisture ANOVAs
 
-START HERE - UPDATE FOR Micro2
-
 ```{r}
 #| label: check ANOVA assumptions
 
 # Filter and prepare data
-micro1_df <- micro1_df |>
-  mutate(Group = interaction(Species, Littercond, Rainfall))
+micro2_df <- micro2_df |>
+  mutate(Group = interaction(DEPTH, Rainfall))
 
 # Step 1: Check initial normality
-hist(micro1_df$LitterMoisturePct, main = "Histogram Litter Moisture", xlab = "response var")
-qqnorm(micro1_df$LitterMoisturePct); qqline(micro1_df$LitterMoisturePct)
+hist(micro2_df$LitterMoisturePct, main = "Histogram Litter Moisture", xlab = "response var")
+qqnorm(micro2_df$LitterMoisturePct); qqline(micro2_df$LitterMoisturePct)
 
-shapiro_raw <- shapiro.test(micro1_df$LitterMoisturePct)
+shapiro_raw <- shapiro.test(micro2_df$LitterMoisturePct)
 cat("Shapiro-Wilk p-value (raw):", shapiro_raw$p.value, "\n")
 
 # Step 2: Apply bestNormalize if needed
 if (shapiro_raw$p.value < 0.05) {
-  bn_obj <- bestNormalize(micro1_df$LitterMoisturePct, allow_orderNorm = FALSE)
-  micro1_df <- micro1_df |>
+  bn_obj <- bestNormalize(micro2_df$LitterMoisturePct, allow_orderNorm = FALSE)
+  micro2_df <- micro2_df |>
     mutate(LitterMoisturePct_trans = predict(bn_obj, newdata = LitterMoisturePct))
   used_var <- "LitterMoisturePct_trans"
   transform_used <- class(bn_obj$chosen_transform)[1]
   
   # Check transformed normality
-  hist(micro1_df$LitterMoisturePct_trans, 
+  hist(micro2_df$LitterMoisturePct_trans, 
        main = "Histogram of Transformed Moisture", xlab = "response var_trans")
-  qqnorm(micro1_df$LitterMoisturePct_trans); qqline(micro1_df$LitterMoisturePct_trans)
+  qqnorm(micro2_df$LitterMoisturePct_trans); qqline(micro2_df$LitterMoisturePct_trans)
   
-  shapiro_trans <- shapiro.test(micro1_df$LitterMoisturePct_trans)
+  shapiro_trans <- shapiro.test(micro2_df$LitterMoisturePct_trans)
   cat("Shapiro-Wilk p-value (transformed):", shapiro_trans$p.value, "\n")
 } else {
   used_var <- "LitterMoisturePct"
@@ -855,7 +858,7 @@ if (shapiro_raw$p.value < 0.05) {
 }
 
 # Step 3: Levene's Test
-levene_result <- leveneTest(reformulate("Group", used_var), data = micro1_df)
+levene_result <- leveneTest(reformulate("Group", used_var), data = micro2_df)
 
 # Step 4: Summary Table
 summary_table <- tibble(
@@ -867,3 +870,159 @@ summary_table <- tibble(
 )
 print(summary_table)
 ```
+
+```{r}
+#| label: two-way ANOVAs at key time points
+
+# uses the ANOVA function loaded in the preparations steps chunk
+# Separate into dfs for the key time points (6, 18, 30, 42)
+micro2_6h_df <- micro2_df |>
+  filter(elapsed_time == "6")
+micro2_18h_df <- micro2_df |>
+  filter(elapsed_time == "18")
+micro2_30h_df <- micro2_df |>
+  filter(elapsed_time == "30")
+micro2_42h_df <- micro2_df |>
+  filter(elapsed_time == "42")
+
+# Two-way ANOVA models 
+
+# 6h
+anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
+                                  "DEPTH:Rainfall"),
+                                used_var),
+                   data = micro2_6h_df)
+anova_summary <- summary(anova_model)
+
+# Compute emmeans and pairwise comparisons
+emm_depth <- emmeans(lm_model, ~ DEPTH)
+emm_rain <- emmeans(lm_model, ~ Rainfall)
+
+# Pairwise comparisons with Tukey adjustment
+pairs_depth <- pairs(emm_depth, adjust = "tukey")
+pairs_rain <- pairs(emm_rain, adjust = "tukey")
+
+# save everything as a text file
+sink(here::here("output", "stats", "anova_summary_micro2_6h.txt"))
+
+cat("=== ANOVA Summary ===\n")
+print(anova_summary)
+
+cat("\n=== Post Hoc: DEPTH ===\n")
+print(emm_depth)
+cat("\n--- Pairwise Comparisons (DEPTH, Tukey) ---\n")
+print(pairs_depth)
+
+cat("\n=== Post Hoc: Rainfall ===\n")
+print(emm_rain)
+cat("\n--- Pairwise Comparisons (Rainfall, Tukey) ---\n")
+print(pairs_rain)
+
+sink()
+
+# 18h
+anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
+                                  "DEPTH:Rainfall"),
+                                used_var),
+                   data = micro2_18h_df)
+anova_summary <- summary(anova_model)
+
+# Compute emmeans and pairwise comparisons
+emm_depth <- emmeans(lm_model, ~ DEPTH)
+emm_rain <- emmeans(lm_model, ~ Rainfall)
+
+# Pairwise comparisons with Tukey adjustment
+pairs_depth <- pairs(emm_depth, adjust = "tukey")
+pairs_rain <- pairs(emm_rain, adjust = "tukey")
+
+# save everything as a text file
+sink(here::here("output", "stats", "anova_summary_micro2_18h.txt"))
+
+cat("=== ANOVA Summary ===\n")
+print(anova_summary)
+
+cat("\n=== Post Hoc: DEPTH ===\n")
+print(emm_depth)
+cat("\n--- Pairwise Comparisons (DEPTH, Tukey) ---\n")
+print(pairs_depth)
+
+cat("\n=== Post Hoc: Rainfall ===\n")
+print(emm_rain)
+cat("\n--- Pairwise Comparisons (Rainfall, Tukey) ---\n")
+print(pairs_rain)
+
+sink()
+
+#30 h
+anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
+                                  "DEPTH:Rainfall"),
+                                used_var),
+                   data = micro2_30h_df)
+anova_summary <- summary(anova_model)
+
+# Compute emmeans and pairwise comparisons
+emm_depth <- emmeans(lm_model, ~ DEPTH)
+emm_rain <- emmeans(lm_model, ~ Rainfall)
+
+# Pairwise comparisons with Tukey adjustment
+pairs_depth <- pairs(emm_depth, adjust = "tukey")
+pairs_rain <- pairs(emm_rain, adjust = "tukey")
+
+# save everything as a text file
+sink(here::here("output", "stats", "anova_summary_micro2_30h.txt"))
+
+cat("=== ANOVA Summary ===\n")
+print(anova_summary)
+
+cat("\n=== Post Hoc: DEPTH ===\n")
+print(emm_depth)
+cat("\n--- Pairwise Comparisons (DEPTH, Tukey) ---\n")
+print(pairs_depth)
+
+cat("\n=== Post Hoc: Rainfall ===\n")
+print(emm_rain)
+cat("\n--- Pairwise Comparisons (Rainfall, Tukey) ---\n")
+print(pairs_rain)
+
+sink()
+
+#42 h
+anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
+                                  "DEPTH:Rainfall"),
+                                used_var),
+                   data = micro2_42h_df)
+
+# Create an lm model for emmeans compatibility
+lm_model <- lm(
+  reformulate(c("DEPTH", "Rainfall", "DEPTH:Rainfall"), used_var),
+  data = micro2_42h_df
+)
+anova_summary <- summary(anova_model)
+
+# Compute emmeans and pairwise comparisons
+emm_depth <- emmeans(lm_model, ~ DEPTH)
+emm_rain <- emmeans(lm_model, ~ Rainfall)
+
+# Pairwise comparisons with Tukey adjustment
+pairs_depth <- pairs(emm_depth, adjust = "tukey")
+pairs_rain <- pairs(emm_rain, adjust = "tukey")
+
+# save everything as a text file
+sink(here::here("output", "stats", "anova_summary_micro2_42h.txt"))
+
+cat("=== ANOVA Summary ===\n")
+print(anova_summary)
+
+cat("\n=== Post Hoc: DEPTH ===\n")
+print(emm_depth)
+cat("\n--- Pairwise Comparisons (DEPTH, Tukey) ---\n")
+print(pairs_depth)
+
+cat("\n=== Post Hoc: Rainfall ===\n")
+print(emm_rain)
+cat("\n--- Pairwise Comparisons (Rainfall, Tukey) ---\n")
+print(pairs_rain)
+
+sink()
+```
+
