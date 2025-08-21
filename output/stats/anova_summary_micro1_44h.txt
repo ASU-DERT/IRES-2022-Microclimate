@@ -5,9 +5,12 @@ Call:
    aov(formula = formula, data = df)
 
 Terms:
-                  Species Littercond  Rainfall Species:Littercond Species:Rainfall Littercond:Rainfall Species:Littercond:Rainfall Residuals
-Sum of Squares  2.9549577  0.4542945 0.0049046          1.1119143        0.0401812           0.0306189                   0.0702490 0.8733614
-Deg. of Freedom         1          1         2                  1                2                   2                           2        44
+                  Species Littercond  Rainfall Species:Littercond Species:Rainfall Littercond:Rainfall
+Sum of Squares  2.9549577  0.4542945 0.0049046          1.1119143        0.0401812           0.0306189
+Deg. of Freedom         1          1         2                  1                2                   2
+                Species:Littercond:Rainfall Residuals
+Sum of Squares                    0.0702490 0.8733614
+Deg. of Freedom                           2        44
 
 Residual standard error: 0.1408869
 Estimated effects may be unbalanced
@@ -18,12 +21,14 @@ Call:
 lm(formula = formula, data = df)
 
 Coefficients:
-                            (Intercept)                             Speciesshrub                          LittercondGreen                                Rainfall5  
-                                 1.2791                                   0.2981                                  -0.3153                                   0.1072  
-                             Rainfall10             Speciesshrub:LittercondGreen                   Speciesshrub:Rainfall5                  Speciesshrub:Rainfall10  
-                                 0.1659                                   0.3755                                  -0.1159                                  -0.1943  
-              LittercondGreen:Rainfall5               LittercondGreen:Rainfall10   Speciesshrub:LittercondGreen:Rainfall5  Speciesshrub:LittercondGreen:Rainfall10  
-                                -0.2344                                  -0.2237                                   0.3391                                   0.2284  
+                            (Intercept)                             Speciesshrub                          LittercondGreen  
+                                 1.2791                                   0.2981                                  -0.3153  
+                              Rainfall5                               Rainfall10             Speciesshrub:LittercondGreen  
+                                 0.1072                                   0.1659                                   0.3755  
+                 Speciesshrub:Rainfall5                  Speciesshrub:Rainfall10                LittercondGreen:Rainfall5  
+                                -0.1159                                  -0.1943                                  -0.2344  
+             LittercondGreen:Rainfall10   Speciesshrub:LittercondGreen:Rainfall5  Speciesshrub:LittercondGreen:Rainfall10  
+                                -0.2237                                   0.3391                                   0.2284  
 
 
 $anova_summary

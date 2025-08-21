@@ -26,7 +26,8 @@ library(purrr) # v. 0.2.3
 library(tidyverse)
 library(lubridate)
 library(ggtext)
-
+library(png)
+library(grid)
 
 # Read in the moon and sun images as grobs
 moon_img <- rasterGrob(readPNG("moon.png"), interpolate = TRUE)
@@ -98,7 +99,7 @@ ggsave(filename =
 ```
 
 ```{r}
-#| label: air temperature plot
+#| label: air temperature plot 
 
 airtemp_m1_p1 <- weather_phase1_df |>
   ggplot(aes(x = elapsed_time)) +

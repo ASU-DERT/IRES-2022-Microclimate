@@ -649,8 +649,8 @@ micro2_litter_p1 <- micro2_means |>
   mutate(
     DEPTH = fct_recode(DEPTH,
       "A. Surface"      = "0",
-      "B. 1 mm Depth"   = "1",
-      "C. 3 mm Depth"   = "3"
+      "B. 1 cm Depth"   = "1",
+      "C. 3 cm Depth"   = "3"
     ),
     Rainfall = fct_recode(Rainfall,
       "0 mm" = "0",
@@ -678,22 +678,31 @@ micro2_litter_p1 <- micro2_means |>
            colour = "black", linewidth = 0.3) +
   geom_line() +
   geom_point(size = 3) +
-  geom_errorbar(aes(ymin = LitterMoisture_mean - se, 
-                    ymax = LitterMoisture_mean + se), 
-                width = 0.5,
-                linetype = "solid") +
+  geom_errorbar(
+    aes(ymin = LitterMoisture_mean - se, 
+        ymax = LitterMoisture_mean + se),
+    width = 0.5,
+    linetype = "solid",
+    show.legend = FALSE) +
   facet_grid(. ~ DEPTH) +
-  scale_color_manual(values = Rainfall_colors) +
-  scale_shape_manual(values = c(16, 17, 18)) +
   labs(x = NULL,
        y = "Litter Moisture (%)",
        color = NULL) +   # no legend title
- guides(
-  color = guide_legend(override.aes = list(shape = c(16, 17, 18),
-                                           linetype = c("solid", "dashed", "dotted"))),
-  linetype = "none",   # hide separate linetype legend
-  shape = "none"       # hide separate shape legend
-) +
+scale_color_manual(values = Rainfall_colors) +
+scale_shape_manual(values = c(16, 17, 18)) +
+scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+guides(
+  color = guide_legend(
+    override.aes = list(
+      shape = c(16, 17, 18),
+      linetype = c("solid", "dashed", "dotted")
+    )
+  ),
+  shape = "none",
+  linetype = "none"
+)+
+theme(legend.title = element_blank()) +
+
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
@@ -757,8 +766,8 @@ micro2_temp_p1 <- Microphase2_iButtons_df |>
       "10 mm" = "10"),
     DEPTH = fct_recode(DEPTH,
       "D. Surface"      = "0",
-      "E. 1 mm Depth"   = "1",
-      "F. 3 mm Depth"   = "3"
+      "E. 1 cm Depth"   = "1",
+      "F. 3 cm Depth"   = "3"
     )
   ) |>
   ggplot(aes(x = elapsed_time, y = temperature,
@@ -781,7 +790,7 @@ micro2_temp_p1 <- Microphase2_iButtons_df |>
   geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
   facet_grid(. ~ DEPTH) +
   scale_color_manual(values = Rainfall_colors) +
-  scale_shape_manual(values = c(16, 17, 18)) +
+#  scale_shape_manual(values = c(16, 17, 18)) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
   scale_x_continuous(limits = c(0, 44)) +
   scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
