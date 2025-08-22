@@ -12,7 +12,7 @@ editor_options:
 This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
 File written: 13 July 2025, Heather Throop\
-Last updated: 2 August 2025, Heather Throop
+Last updated: 21 August 2025, Heather Throop - needs more work on iButtons binning (I stopped on M2, haven't done M1)
 
 THE ANOVA ASSUMPTIONS FUNCTION IS NOT WORKING
 
@@ -740,7 +740,14 @@ ggsave(filename =
 
 ```{r}
 #| label: read in L1 iButton CSV
+
+### NOTE: time in the datetime column is two hours earlier than the time column. I'm assuming for now that datetime is correct, but need to check this carefully.
+
 Microphase2_iButtons_df <- read_csv(here("data","microphase2_iButtons_L1.csv"))
+
+# remove duplicate rows
+Microphase2_iButtons_df <- Microphase2_iButtons_df |>
+  distinct()
 
 # change to a factor and change capitalization for consistency
 Microphase2_iButtons_df$Rainfall <- as.factor(Microphase2_iButtons_df$rainfall)
@@ -756,7 +763,101 @@ Microphase2_iButtons_df <- Microphase2_iButtons_df |>
 ```
 
 ```{r}
-#| label: iButton temperature by rainfall 
+#| label: bin iButton temperature into hourly means
+
+Microphase2_iButtons_hourly_df <- Microphase2_iButtons_df |>
+  # create a "bin" around each whole number of elapsed_time
+  mutate(elapsed_bin = round(elapsed_time)) |>
+  # keep only rows within +/- 0.5 of the whole number
+ # filter(elapsed_time >= elapsed_bin - 0.5,
+  #       elapsed_time <  elapsed_bin + 0.5) #%>%
+  group_by(DEPTH, quadrat, Rainfall, elapsed_bin) |>
+  summarise(
+    temp_hourly_mean = mean(temperature, na.rm = TRUE),
+    N = n()
+  ) |>
+  group_by(DEPTH, Rainfall, elapsed_bin) |>
+  summarise(
+    temperature = mean(temp_hourly_mean, na.rm = TRUE),
+    N = n(),
+    sd_temp = sd(temp_hourly_mean, na.rm = TRUE)
+  )
+
+
+```
+
+```{r}
+#| label: plot iButton temperature by rainfall 
+
+### NEEDS WORK
+
+micro2_temp_p1a <- Microphase2_iButtons_hourly_df |>
+    mutate(
+    Rainfall = fct_recode(Rainfall,
+      "0 mm" = "0",
+      "5 mm" = "5",
+      "10 mm" = "10"),
+    DEPTH = fct_recode(DEPTH,
+      "D. Surface"      = "0",
+      "E. 1 cm Depth"   = "1",
+      "F. 3 cm Depth"   = "3"
+    )
+  ) |>
+ ggplot(aes(x = elapsed_bin, y = temperature,
+                               color = Rainfall,
+                               shape = Rainfall,
+                               linetype = Rainfall,
+                               group = Rainfall)) +
+  # add blue box for fog
+  annotate("rect", xmin = 18, xmax = 19, 
+           ymin = -Inf, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "grey",
+           colour = "black", linewidth = 0.3) +
+  annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "grey",
+           colour = "black", linewidth = 0.3) +
+  # add line connecting points
+  geom_line(linewidth = 0.8) +
+  # add points for mean values
+  geom_point(size = 3) +
+  # add error bars for ±SE
+  geom_errorbar(aes(ymin = temperature - (sd_temp / sqrt(N)),
+                    ymax = temperature + (sd_temp / sqrt(N))),
+                width = 0.2) +
+  facet_grid(. ~ DEPTH) +
+  scale_color_manual(values = Rainfall_colors) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+  scale_x_continuous(limits = c(0, 44)) +
+  scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
+  labs(x = "Elapsed Time (hours)",
+       y = "Litter Temp. (°C)",
+       color = "",
+       shape = "",
+       linetype = "") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    legend.position = "top",
+    legend.justification = c("center","top")
+  )
+micro2_temp_p1a
+
+# save the plot
+#ggsave(filename = 
+#       here("output","figures", "microphase2_temperature_by_ppt#.jpg"),
+#       device = "jpeg",
+#       width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+#| label: plot iButton temperature by rainfall 
 
 micro2_temp_p1 <- Microphase2_iButtons_df |>
     mutate(
