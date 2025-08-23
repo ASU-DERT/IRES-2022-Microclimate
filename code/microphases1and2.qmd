@@ -37,6 +37,10 @@ library(png)
 TYPE_colors <- c("#fa882a","#6e4424","#5dba2b","#166610")
 DEPTH_colors <- c("#166610", "tan", "#6e4424")
 Rainfall_colors <- c("#d95f02", "#1b9e77", "#7570b3")
+TYPE_linetypes <- c("brown grass" = "solid",
+              "brown shrub" = "dashed",
+              "green grass" = "solid",
+              "green shrub" = "dashed")
 
 # Read in the moon and sun images as grobs
 moon_img <- rasterGrob(readPNG("moon.png"), interpolate = TRUE)
@@ -175,6 +179,13 @@ micro1_df$TYPE <- dplyr::recode(micro1_df$TYPE,
                                    "GSP" = "green shrub",
                                    "GSS" = "green grass")
 
+# force the order for TYPE so color assignments are in the same order
+micro1_df <- micro1_df |> 
+  mutate(TYPE = factor(TYPE, 
+                       levels = c("brown grass", "brown shrub", 
+                                  "green grass", "green shrub")))
+
+
 ##calculate derived variables
 # calculate litter wet mass, dry mass, and percent moisture at collection
 micro1_df <- micro1_df |> 
@@ -308,6 +319,7 @@ micro1_litter_p2 <- micro1_means |>
   facet_grid(. ~ Rainfall) +
   scale_color_manual(values = TYPE_colors) +
   scale_shape_manual(values = c(16, 17, 16, 17)) +
+  scale_linetype_manual(values = TYPE_linetypes) + # custom linetypes
   labs(x = NULL,
        y = "Litter Moisture (%)",
        color = NULL) +   # remove the title above legend
@@ -365,12 +377,40 @@ Microphase1_iButtons_df <- Microphase1_iButtons_df |>
     species == "SS" & condition == "G" ~ "green grass",
     TRUE ~ NA_character_
   ))
+
+# force the order for TYPE so color assignments are in the same order
+Microphase1_iButtons_df <- Microphase1_iButtons_df |> 
+  mutate(TYPE = factor(TYPE, 
+                       levels = c("brown grass", "brown shrub", 
+                                  "green grass", "green shrub")))
+
 ```
+
+```{r}
+#| label: bin iButton temperature into hourly means
+
+Microphase1_iButtons_hourly_df <- Microphase1_iButtons_df |>
+  # create a "bin" around each whole number of elapsed_time
+  mutate(elapsed_bin = round(elapsed_time)) |>
+  group_by(quadrat, Rainfall, species, condition,TYPE, elapsed_bin) |>
+  summarise(
+    temp_hourly_mean = mean(temperature, na.rm = TRUE),
+    N = n()
+  ) |>
+  group_by(Rainfall, species, condition, TYPE, elapsed_bin) |>
+  summarise(
+    temperature = mean(temp_hourly_mean, na.rm = TRUE),
+    N = n(),
+    sd_temp = sd(temp_hourly_mean, na.rm = TRUE)
+  )
+
+```
+
 
 ```{r}
 #| label: iButton temperature by rainfall 
 
-### NOTE: this should print a ribbon w SE but it does not, apparently since not multiple logs per time (time of logs not perfectly aligned). Data can be binned first to have multiple points to get an SE.
+# NOT USING - USE BINNED DATA (Below)
 
 micro1_temp_p1 <- Microphase1_iButtons_df |>
     mutate(
@@ -404,10 +444,7 @@ micro1_temp_p1 <- Microphase1_iButtons_df |>
   geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
   facet_grid(. ~ Rainfall) +
   scale_color_manual(values = TYPE_colors) +
-  scale_linetype_manual(values = c("brown shrub" = "solid",
-                                   "brown grass" = "dashed",
-                                   "green shrub" = "solid",
-                                   "green grass" = "dashed")) +
+  scale_linetype_manual(values = TYPE_linetypes) + # custom linetypes
   scale_x_continuous(limits = c(0, 48)) +
   scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
   labs(x = "Elapsed Time (hours)",
@@ -432,6 +469,68 @@ ggsave(filename =
        width = 8, height = 6, dpi = 300)
 ```
 
+```{r}
+#| label: iButton temperature by rainfall - binned hourly data
+
+micro1_temp_binned_p1 <- Microphase1_iButtons_hourly_df |>
+    mutate(
+    Rainfall = fct_recode(Rainfall,
+      "D. No Addition"      = "0",
+      "E. 5 mm Addition"   = "5",
+      "F. 10 mm Addition"   = "10"
+    )
+  ) |>
+  ggplot(aes(x = elapsed_bin, y = temperature,
+             color = TYPE,
+             shape = TYPE,
+             linetype = TYPE,
+             group = TYPE)) +
+  # add blue box for fog
+  annotate("rect", xmin = 33, xmax = 44, 
+           ymin = -Inf, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
+  # add fog label
+  # annotate("text", x = 38.5, y = 130, label = "Fog", color = "#54b8e3", size = 5) +
+  # Add shaded night areas
+  annotate("rect",
+         xmin = night1_start_m1, xmax = night1_end_m1, 
+         ymin = -Inf, ymax = Inf,
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
+  annotate("rect", 
+         xmin = night2_start_m1, xmax = night2_end_m1, 
+         ymin = -Inf, ymax = Inf, 
+         alpha = 0.4, fill = "darkgrey",
+         colour = "black", linewidth = 0.3) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
+  facet_grid(. ~ Rainfall) +
+  scale_color_manual(values = TYPE_colors) +
+  scale_linetype_manual(values = TYPE_linetypes) + # custom linetypes
+  scale_x_continuous(limits = c(0, 48)) +
+  scale_y_continuous(limits = c(5, 45), expand = c(0, 0)) +
+  labs(x = "Elapsed Time (hours)",
+       y = "Litter Temp. (°C)",
+       color = "",
+       shape = "",
+       linetype = "") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    legend.position = "top",
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+  )
+micro1_temp_binned_p1
+
+# save the plot
+ggsave(filename = 
+       here("output","figures", "microphase1_temperature_by_ppt_binned.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+```
+
+
+
 ## Combine litter moisture and temperature plots
 
 ```{r}
@@ -441,7 +540,7 @@ ggsave(filename =
 
 # supress legends in plot 2, use plot 1 legend in combined plot
 plot1_legend <- micro1_litter_p2 + theme(legend.position = "top")
-plot2_no_legend <- micro1_temp_p1 + theme(legend.position = "none")
+plot2_no_legend <- micro1_temp_binned_p1 + theme(legend.position = "none")
 
 combined_plots <- plot_grid(plot1_legend, plot2_no_legend, ncol = 1, align = "v", rel_heights = c(1, 1))
 
@@ -768,9 +867,6 @@ Microphase2_iButtons_df <- Microphase2_iButtons_df |>
 Microphase2_iButtons_hourly_df <- Microphase2_iButtons_df |>
   # create a "bin" around each whole number of elapsed_time
   mutate(elapsed_bin = round(elapsed_time)) |>
-  # keep only rows within +/- 0.5 of the whole number
- # filter(elapsed_time >= elapsed_bin - 0.5,
-  #       elapsed_time <  elapsed_bin + 0.5) #%>%
   group_by(DEPTH, quadrat, Rainfall, elapsed_bin) |>
   summarise(
     temp_hourly_mean = mean(temperature, na.rm = TRUE),
@@ -787,77 +883,8 @@ Microphase2_iButtons_hourly_df <- Microphase2_iButtons_df |>
 ```
 
 ```{r}
-#| label: plot iButton temperature by rainfall 
-
-### NEEDS WORK
-
-micro2_temp_p1a <- Microphase2_iButtons_hourly_df |>
-    mutate(
-    Rainfall = fct_recode(Rainfall,
-      "0 mm" = "0",
-      "5 mm" = "5",
-      "10 mm" = "10"),
-    DEPTH = fct_recode(DEPTH,
-      "D. Surface"      = "0",
-      "E. 1 cm Depth"   = "1",
-      "F. 3 cm Depth"   = "3"
-    )
-  ) |>
- ggplot(aes(x = elapsed_bin, y = temperature,
-                               color = Rainfall,
-                               shape = Rainfall,
-                               linetype = Rainfall,
-                               group = Rainfall)) +
-  # add blue box for fog
-  annotate("rect", xmin = 18, xmax = 19, 
-           ymin = -Inf, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
-  # Add shaded night areas
-  annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
-           ymin = -Inf, ymax = Inf, 
-           alpha = 0.2, fill = "grey",
-           colour = "black", linewidth = 0.3) +
-  annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
-           ymin = -Inf, ymax = Inf, 
-           alpha = 0.2, fill = "grey",
-           colour = "black", linewidth = 0.3) +
-  # add line connecting points
-  geom_line(linewidth = 0.8) +
-  # add points for mean values
-  geom_point(size = 3) +
-  # add error bars for ±SE
-  geom_errorbar(aes(ymin = temperature - (sd_temp / sqrt(N)),
-                    ymax = temperature + (sd_temp / sqrt(N))),
-                width = 0.2) +
-  facet_grid(. ~ DEPTH) +
-  scale_color_manual(values = Rainfall_colors) +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  scale_x_continuous(limits = c(0, 44)) +
-  scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
-  labs(x = "Elapsed Time (hours)",
-       y = "Litter Temp. (°C)",
-       color = "",
-       shape = "",
-       linetype = "") +
-  theme_classic(base_size = 16) +
-  theme(
-    panel.spacing = unit(1, "lines"),
-    strip.background = element_rect(fill = "gray80", color = "black"),
-    strip.text = element_text(color = "black"),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
-    legend.position = "top",
-    legend.justification = c("center","top")
-  )
-micro2_temp_p1a
-
-# save the plot
-#ggsave(filename = 
-#       here("output","figures", "microphase2_temperature_by_ppt#.jpg"),
-#       device = "jpeg",
-#       width = 8, height = 6, dpi = 300)
-```
-
-```{r}
-#| label: plot iButton temperature by rainfall 
+#| label: plot iButton temperature by rainfall - loess smooth
+# currently using the binned data (below)
 
 micro2_temp_p1 <- Microphase2_iButtons_df |>
     mutate(
@@ -912,11 +939,75 @@ micro2_temp_p1 <- Microphase2_iButtons_df |>
 micro2_temp_p1
 
 # save the plot
+#ggsave(filename = 
+#       here("output","figures", "microphase2_temperature_by_ppt.jpg"),
+#       device = "jpeg",
+#       width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+#| label: plot iButton temperature by rainfall - loess smooth hourly binned
+# this is the same as above but uses hourly binned data to get a smoother line - use as of 2025-08-22
+
+micro2_temp_p1c <- Microphase2_iButtons_hourly_df |>
+    mutate(
+    Rainfall = fct_recode(Rainfall,
+      "0 mm" = "0",
+      "5 mm" = "5",
+      "10 mm" = "10"),
+    DEPTH = fct_recode(DEPTH,
+      "D. Surface"      = "0",
+      "E. 1 cm Depth"   = "1",
+      "F. 3 cm Depth"   = "3"
+    )
+  ) |>
+  ggplot(aes(x = elapsed_bin, y = temperature,
+             color = Rainfall,
+             shape = Rainfall,
+             linetype = Rainfall,
+             group = Rainfall)) +
+ # add blue box for fog
+  annotate("rect", xmin = 18, xmax = 19, 
+           ymin = -Inf, ymax = Inf, alpha = 0.5, fill = "#54b8e3") +
+  # Add shaded night areas
+  annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "grey",
+           colour = "black", linewidth = 0.3) +
+  annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, fill = "grey",
+           colour = "black", linewidth = 0.3) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
+  facet_grid(. ~ DEPTH) +
+  scale_color_manual(values = Rainfall_colors) +
+#  scale_shape_manual(values = c(16, 17, 18)) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+  scale_x_continuous(limits = c(0, 44)) +
+  scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
+  labs(x = "Elapsed Time (hours)",
+       y = "Litter Temp. (°C)",
+       color = "",
+       shape = "",
+       linetype = "") +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    legend.position = "top",
+    legend.justification = c("center","top")
+  )
+micro2_temp_p1c
+
+# save the plot
 ggsave(filename = 
        here("output","figures", "microphase2_temperature_by_ppt.jpg"),
-       device = "jpeg",
+      device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
+
 
 ## Combine litter moisture and temperature plots
 
@@ -925,7 +1016,7 @@ ggsave(filename =
 
 # supress legends in plot 2, use plot 1 legends for combined plot
 plot1_legend <- micro2_litter_p1 + theme(legend.position = "top")
-plot2_no_legend <- micro2_temp_p1 + theme(legend.position = "none")
+plot2_no_legend <- micro2_temp_p1c + theme(legend.position = "none")
 
 combined_plots <- plot_grid(plot1_legend, plot2_no_legend, ncol = 1, align = "v", rel_heights = c(1, 1))
 
@@ -1013,6 +1104,13 @@ anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
                    data = micro2_6h_df)
 anova_summary <- summary(anova_model)
 
+# Create an lm model for emmeans compatibility
+lm_model <- lm(
+  reformulate(c("DEPTH", "Rainfall", "DEPTH:Rainfall"), used_var),
+  data = micro2_6h_df
+)
+anova_summary <- summary(anova_model)
+
 # Compute emmeans and pairwise comparisons
 emm_depth <- emmeans(lm_model, ~ DEPTH)
 emm_rain <- emmeans(lm_model, ~ Rainfall)
@@ -1046,6 +1144,13 @@ anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
                    data = micro2_18h_df)
 anova_summary <- summary(anova_model)
 
+# Create an lm model for emmeans compatibility
+lm_model <- lm(
+  reformulate(c("DEPTH", "Rainfall", "DEPTH:Rainfall"), used_var),
+  data = micro2_18h_df
+)
+anova_summary <- summary(anova_model)
+
 # Compute emmeans and pairwise comparisons
 emm_depth <- emmeans(lm_model, ~ DEPTH)
 emm_rain <- emmeans(lm_model, ~ Rainfall)
@@ -1077,6 +1182,13 @@ anova_model <- aov(reformulate(c("DEPTH", "Rainfall",
                                   "DEPTH:Rainfall"),
                                 used_var),
                    data = micro2_30h_df)
+anova_summary <- summary(anova_model)
+
+# Create an lm model for emmeans compatibility
+lm_model <- lm(
+  reformulate(c("DEPTH", "Rainfall", "DEPTH:Rainfall"), used_var),
+  data = micro2_30h_df
+)
 anova_summary <- summary(anova_model)
 
 # Compute emmeans and pairwise comparisons
