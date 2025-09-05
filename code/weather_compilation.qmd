@@ -410,9 +410,15 @@ airtemp_m2_p1 <- weather_phase2_gob_df |>
   ggplot(aes(x = elapsed_time)) +
   # Add shaded night areas
   annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   
   # Add air temperature line
   geom_line(aes(y = AirTemp)) +
@@ -489,9 +495,15 @@ soil_and_air_temp_m2_p1 <- weather_phase2_gob_df |>
   ggplot(aes(x = elapsed_time)) +
   # Add shaded night areas
   annotate("rect", xmin = night1_start_m2, xmax = night1_end_m2, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   annotate("rect", xmin = night2_start_m2, xmax = night2_end_m2, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   
   # Add soil temperature (brown dashed) and air temperature (blue solid) lines
   geom_line(aes(y = SoilTemp, color = "Soil Temperature"), 

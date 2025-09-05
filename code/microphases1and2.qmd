@@ -396,12 +396,6 @@ Microphase1_iButtons_hourly_df <- Microphase1_iButtons_df |>
   summarise(
     temp_hourly_mean = mean(temperature, na.rm = TRUE),
     N = n()
-  ) |>
-  group_by(Rainfall, species, condition, TYPE, elapsed_bin) |>
-  summarise(
-    temperature = mean(temp_hourly_mean, na.rm = TRUE),
-    N = n(),
-    sd_temp = sd(temp_hourly_mean, na.rm = TRUE)
   )
 
 ```
@@ -480,7 +474,7 @@ micro1_temp_binned_p1 <- Microphase1_iButtons_hourly_df |>
       "F. 10 mm Addition"   = "10"
     )
   ) |>
-  ggplot(aes(x = elapsed_bin, y = temperature,
+  ggplot(aes(x = elapsed_bin, y = temp_hourly_mean,
              color = TYPE,
              shape = TYPE,
              linetype = TYPE,
@@ -501,7 +495,8 @@ micro1_temp_binned_p1 <- Microphase1_iButtons_hourly_df |>
          ymin = -Inf, ymax = Inf, 
          alpha = 0.4, fill = "darkgrey",
          colour = "black", linewidth = 0.3) +
-  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2,
+            linewidth = 0.5, fill = "grey80", alpha = 0.3) +
   facet_grid(. ~ Rainfall) +
   scale_color_manual(values = TYPE_colors) +
   scale_linetype_manual(values = TYPE_linetypes) + # custom linetypes
@@ -859,8 +854,6 @@ ggsave(filename =
 ```{r}
 #| label: read in L1 iButton CSV
 
-### NOTE: time in the datetime column is two hours earlier than the time column. I'm assuming for now that datetime is correct, but need to check this carefully.
-
 Microphase2_iButtons_df <- read_csv(here("data","microphase2_iButtons_L1.csv"))
 
 # remove duplicate rows
@@ -887,16 +880,17 @@ Microphase2_iButtons_hourly_df <- Microphase2_iButtons_df |>
   # create a "bin" around each whole number of elapsed_time
   mutate(elapsed_bin = round(elapsed_time)) |>
   group_by(DEPTH, quadrat, Rainfall, elapsed_bin) |>
+  filter(elapsed_bin >= 0 & elapsed_bin <= 42) |>
   summarise(
     temp_hourly_mean = mean(temperature, na.rm = TRUE),
-    N = n()
-  ) |>
-  group_by(DEPTH, Rainfall, elapsed_bin) |>
-  summarise(
-    temperature = mean(temp_hourly_mean, na.rm = TRUE),
-    N = n(),
-    sd_temp = sd(temp_hourly_mean, na.rm = TRUE)
-  )
+    N = n())
+#  ) #|>
+ # group_by(DEPTH, Rainfall, elapsed_bin) |>
+#  summarise(
+ #   temperature = mean(temp_hourly_mean, na.rm = TRUE),
+#    N = n(),
+#    sd_temp = sd(temp_hourly_mean, na.rm = TRUE)
+#  )
 
 
 ```
@@ -980,7 +974,7 @@ micro2_temp_p1c <- Microphase2_iButtons_hourly_df |>
       "F. 3 cm Depth"   = "3"
     )
   ) |>
-  ggplot(aes(x = elapsed_bin, y = temperature,
+  ggplot(aes(x = elapsed_bin, y = temp_hourly_mean,
              color = Rainfall,
              shape = Rainfall,
              linetype = Rainfall,
@@ -997,10 +991,12 @@ micro2_temp_p1c <- Microphase2_iButtons_hourly_df |>
            ymin = -Inf, ymax = Inf, 
            alpha = 0.2, fill = "grey",
            colour = "black", linewidth = 0.3) +
-  geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
+ # geom_smooth(method = "loess", se = TRUE, span = 0.2, linewidth = 0.5) +
+  geom_smooth(method = "loess", se = TRUE, span = 0.2,
+            linewidth = 0.5, fill = "grey80", alpha = 0.3) +
   facet_grid(. ~ DEPTH) +
   scale_color_manual(values = Rainfall_colors) +
-#  scale_shape_manual(values = c(16, 17, 18)) +
+  scale_shape_manual(values = c(16, 17, 18)) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
   scale_x_continuous(limits = c(0, 44)) +
   scale_y_continuous(limits = c(0, 35), expand = c(0, 0)) +
