@@ -25,6 +25,7 @@ library(bestNormalize)
 library(car)        # for Levene's test
 library(ggplot2)
 library(emmeans)    # for post hoc Tukey
+library(multcomp) # for compact letter displays of comparisons
 ```
 
 ## Data Ingestion & Calculations
@@ -65,17 +66,33 @@ litterWHC_df$Species <- dplyr::recode(litterWHC_df$Species,
 ```{r}
 #| label: WHC plot
 
+# Create a dataframe for interaction labels
+label_df <- litterWHC_df |>
+  dplyr::distinct(Species, LitterCond) |>
+  dplyr::arrange(Species, LitterCond) |>
+  dplyr::mutate(
+    Letters = c("a", "b", "a", "c"),   # letters in order
+    WHC = c(175, 190, 145, 80)  # position above bars
+  )
+
 p_WHC <- litterWHC_df |>
-  ggplot(aes(x = Species, y = WHC, fill = LitterCond)) +
-    geom_boxplot() +
-    scale_fill_manual(values = c("green" = "#2E8B57", "brown" = "#8B4513")) +
-    labs(
-      x = "Species",
-      y = "Litter Water Holding Capacity (% by mass)",
-      fill = ""
+    ggplot(aes(x = Species, y = WHC, fill = LitterCond)) +
+      geom_boxplot() +
+      scale_fill_manual(values = c("green" = "#2E8B57", "brown" = "#8B4513")) +
+      labs(
+        x = "Species",
+        y = "Litter Water Holding Capacity (% by mass)",
+        fill = ""
     ) +
     theme_classic(base_size = 20)+
-    theme(legend.position = c(0.2, 0.2))  # Adjust position as needed
+    theme(legend.position = c(0.2, 0.2))  +# Adjust position as needed
+    geom_text(
+      data = label_df,
+      aes(x = Species, y = WHC, 
+          label = Letters, group = LitterCond),
+      position = position_dodge(width = 0.75),   # align with boxplot dodging
+      size = 6,
+      inherit.aes = FALSE)
 p_WHC
 
 # save the plot
@@ -141,8 +158,25 @@ print(tukey_interaction)
 emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
   labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
 
+# === Compact Letter Displays (CLD) ===
 
-# === Save all text output to a single TXT file ===
+# Species main effect
+emm_species <- emmeans(aov_model, ~ Species)
+cld_species <- cld(emm_species, adjust = "tukey", Letters = letters, alpha = 0.05)
+
+# LitterCond main effect
+emm_littercond <- emmeans(aov_model, ~ LitterCond)
+cld_littercond <- cld(emm_littercond, adjust = "tukey", Letters = letters, alpha = 0.05)
+
+# Interaction effect
+cld_interaction <- cld(emm, adjust = "tukey", Letters = letters, alpha = 0.05)
+
+# Print results with group letters
+print(cld_species)
+print(cld_littercond)
+print(cld_interaction)
+
+# === Save results including CLDs ===
 sink(here("output", "stats","whc_analysis_results.txt"))
 
 cat("===== Two-Way ANOVA Summary =====\n")
@@ -150,20 +184,19 @@ print(summary(aov_model))
 
 cat("\n\n===== Tukey Pairwise Comparisons: Species =====\n")
 print(tukey_species)
+cat("\nCompact Letter Display (Species):\n")
+print(cld_species)
 
 cat("\n\n===== Tukey Pairwise Comparisons: LitterCond =====\n")
 print(tukey_littercond)
+cat("\nCompact Letter Display (LitterCond):\n")
+print(cld_littercond)
 
 cat("\n\n===== Tukey Pairwise Comparisons: Interaction =====\n")
 print(tukey_interaction)
+cat("\nCompact Letter Display (Interaction):\n")
+print(cld_interaction)
 
 sink()
 
-# === Save interaction plot to PNG ===
-plot_file <- here("output", "whc_interaction_plot.png")
-
-ggplot_obj <- emmip(emm, Species ~ LitterCond, CIs = TRUE) + 
-  labs(y = "Estimated WHC", title = "Interaction Plot: Species × Litter Condition")
-
-ggsave(plot_file, ggplot_obj, width = 6, height = 4, dpi = 300)
 ```

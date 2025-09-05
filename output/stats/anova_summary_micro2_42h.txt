@@ -1,44 +1,44 @@
 === ANOVA Summary ===
                Df Sum Sq Mean Sq F value   Pr(>F)    
-DEPTH           2  6.123   3.061  11.270 0.000176 ***
-Rainfall        2  8.246   4.123  15.178 1.95e-05 ***
-DEPTH:Rainfall  4  2.484   0.621   2.286 0.080290 .  
-Residuals      34  9.236   0.272                     
+DEPTH           2  8.570   4.285  11.026 0.000204 ***
+Rainfall        2 10.750   5.375  13.831 4.03e-05 ***
+DEPTH:Rainfall  4  3.452   0.863   2.221 0.087411 .  
+Residuals      34 13.213   0.389                     
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 === Post Hoc: DEPTH ===
  DEPTH  emmean    SE df lower.CL upper.CL
- 0     -0.7354 0.135 34   -1.009   -0.462
- 1     -0.1286 0.140 34   -0.413    0.156
- 3      0.0711 0.140 34   -0.214    0.356
+ 0     -0.8879 0.161 34   -1.215   -0.561
+ 1     -0.2069 0.168 34   -0.547    0.134
+ 3      0.0821 0.168 34   -0.258    0.423
 
 Results are averaged over the levels of: Rainfall 
 Confidence level used: 0.95 
 
 --- Pairwise Comparisons (DEPTH, Tukey) ---
  contrast        estimate    SE df t.ratio p.value
- DEPTH0 - DEPTH1   -0.607 0.194 34  -3.124  0.0099
- DEPTH0 - DEPTH3   -0.807 0.194 34  -4.152  0.0006
- DEPTH1 - DEPTH3   -0.200 0.198 34  -1.008  0.5768
+ DEPTH0 - DEPTH1   -0.681 0.232 34  -2.931  0.0161
+ DEPTH0 - DEPTH3   -0.970 0.232 34  -4.175  0.0006
+ DEPTH1 - DEPTH3   -0.289 0.237 34  -1.220  0.4500
 
 Results are averaged over the levels of: Rainfall 
 P value adjustment: tukey method for comparing a family of 3 estimates 
 
 === Post Hoc: Rainfall ===
  Rainfall  emmean    SE df lower.CL upper.CL
- 0        -0.9223 0.145 34   -1.218   -0.627
- 5         0.0396 0.135 34   -0.234    0.313
- 10        0.0896 0.135 34   -0.184    0.363
+ 0        -1.0859 0.174 34   -1.439   -0.733
+ 5        -0.0324 0.161 34   -0.360    0.295
+ 10        0.1057 0.161 34   -0.221    0.433
 
 Results are averaged over the levels of: DEPTH 
 Confidence level used: 0.95 
 
 --- Pairwise Comparisons (Rainfall, Tukey) ---
  contrast               estimate    SE df t.ratio p.value
- Rainfall0 - Rainfall5    -0.962 0.198 34  -4.856  0.0001
- Rainfall0 - Rainfall10   -1.012 0.198 34  -5.108  <.0001
- Rainfall5 - Rainfall10   -0.050 0.190 34  -0.263  0.9627
+ Rainfall0 - Rainfall5    -1.054 0.237 34  -4.447  0.0003
+ Rainfall0 - Rainfall10   -1.192 0.237 34  -5.029  <.0001
+ Rainfall5 - Rainfall10   -0.138 0.228 34  -0.607  0.8175
 
 Results are averaged over the levels of: DEPTH 
 P value adjustment: tukey method for comparing a family of 3 estimates 

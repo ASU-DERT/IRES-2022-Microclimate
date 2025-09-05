@@ -1,0 +1,75 @@
+===== Two-Way ANOVA Summary =====
+                   Df Sum Sq Mean Sq F value   Pr(>F)    
+Species             1  35.83   35.83 153.162  < 2e-16 ***
+LitterCond          1   0.30    0.30   1.286    0.261    
+Species:LitterCond  1  20.22   20.22  86.446 7.54e-14 ***
+Residuals          70  16.38    0.23                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+===== Tukey Pairwise Comparisons: Species =====
+ contrast      estimate    SE df t.ratio p.value
+ shrub - grass     1.42 0.113 70  12.600  <.0001
+
+Results are averaged over the levels of: LitterCond 
+
+Compact Letter Display (Species):
+ Species emmean     SE df lower.CL upper.CL .group
+ grass   -0.677 0.0785 70   -0.857   -0.498  a    
+ shrub    0.741 0.0807 70    0.557    0.926   b   
+
+Results are averaged over the levels of: LitterCond 
+Confidence level used: 0.95 
+Conf-level adjustment: sidak method for 2 estimates 
+significance level used: alpha = 0.05 
+NOTE: If two or more means share the same grouping symbol,
+      then we cannot show them to be different.
+      But we also did not show them to be the same. 
+
+
+===== Tukey Pairwise Comparisons: LitterCond =====
+ contrast      estimate    SE df t.ratio p.value
+ brown - green   0.0977 0.113 70   0.868  0.3883
+
+Results are averaged over the levels of: Species 
+
+Compact Letter Display (LitterCond):
+ LitterCond  emmean     SE df lower.CL upper.CL .group
+ green      -0.0169 0.0807 70  -0.2014    0.168  a    
+ brown       0.0809 0.0785 70  -0.0985    0.260  a    
+
+Results are averaged over the levels of: Species 
+Confidence level used: 0.95 
+Conf-level adjustment: sidak method for 2 estimates 
+significance level used: alpha = 0.05 
+NOTE: If two or more means share the same grouping symbol,
+      then we cannot show them to be different.
+      But we also did not show them to be the same. 
+
+
+===== Tukey Pairwise Comparisons: Interaction =====
+ contrast                  estimate    SE df t.ratio p.value
+ shrub brown - grass brown    0.372 0.157 70   2.369  0.0926
+ shrub brown - shrub green   -0.949 0.161 70  -5.877  <.0001
+ shrub brown - grass green    1.516 0.157 70   9.663  <.0001
+ grass brown - shrub green   -1.321 0.161 70  -8.180  <.0001
+ grass brown - grass green    1.145 0.157 70   7.293  <.0001
+ shrub green - grass green    2.465 0.161 70  15.268  <.0001
+
+P value adjustment: tukey method for comparing a family of 4 estimates 
+
+Compact Letter Display (Interaction):
+ Species LitterCond emmean    SE df lower.CL upper.CL .group
+ grass   green      -1.250 0.111 70  -1.5333   -0.966  a    
+ grass   brown      -0.105 0.111 70  -0.3887    0.179   b   
+ shrub   brown       0.267 0.111 70  -0.0169    0.550   b   
+ shrub   green       1.216 0.117 70   0.9159    1.516    c  
+
+Confidence level used: 0.95 
+Conf-level adjustment: sidak method for 4 estimates 
+P value adjustment: tukey method for comparing a family of 4 estimates 
+significance level used: alpha = 0.05 
+NOTE: If two or more means share the same grouping symbol,
+      then we cannot show them to be different.
+      But we also did not show them to be the same. 

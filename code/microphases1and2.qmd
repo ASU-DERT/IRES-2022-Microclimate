@@ -674,6 +674,25 @@ print(result_44h)
 sink()
 ```
 
+```{r}
+#| label: compare litter moisture at 32h and 44h
+
+# summarize data to get means and SEs for each Rainfall treatment at 32h and 44h
+micro1_32_44_means <- micro1_df |>
+  filter(elapsed_time %in% c(32, 44)) |>
+  group_by(Rainfall, elapsed_time) |>
+  summarise(
+    LitterMoisture_mean = mean(LitterMoisturePct, na.rm = TRUE),
+    n = n(),
+    sd = sd(LitterMoisturePct, na.rm = TRUE),
+    se = sd / sqrt(n)
+  )
+
+print(micro1_32_44_means)
+
+```
+
+
 # Microphase 2
 
 ## Data Ingestion & Calculations

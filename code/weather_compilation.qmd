@@ -73,11 +73,22 @@ coeff <- 100
 fog_humidity_m1_p1 <- weather_phase1_df |>
   ggplot(aes(x=elapsed_time)) +
   geom_bar(aes(y=Fog), stat = "identity", fill='black') +
-  geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
-  geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
-  ylim(0,1) +
+  # Smoothed Humidity line
+  stat_smooth(
+    aes(y = Humidity / coeff),
+    method = "loess", span = 0.3, se = FALSE,
+    color = "#1b98e0", size = 1
+  ) +
+  # Smoothed Humidity area
+  stat_smooth(
+    aes(y = Humidity / coeff),
+    method = "loess", span = 0.3, se = FALSE,
+    geom = "area", fill = "#1b98e0", alpha = 0.2
+  ) +
+   ylim(0,1) +
   scale_y_continuous(name = "Fog (mm)", 
-                     sec.axis = sec_axis(~.*coeff, name="Humidity (%)"),expand=c(0,0)) +
+                     sec.axis = sec_axis(~.*coeff, 
+                                         name="Relative Humidity (%)"),expand=c(0,0)) +
   xlab("Elapsed Time (hours)") + 
   ylab("Fog (mm)") +
   # Add "A." in upper-left corner
@@ -105,9 +116,15 @@ airtemp_m1_p1 <- weather_phase1_df |>
   ggplot(aes(x = elapsed_time)) +
   # Add shaded night areas
   annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, 
+           alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   
   # Add soil temperature line
   geom_line(aes(y = AirTemperature)) +
@@ -187,14 +204,21 @@ soil_and_air_temp_m1_p1 <- weather_phase1_df |>
   ggplot(aes(x = elapsed_time)) +
   # Add shaded night areas
   annotate("rect", xmin = night1_start_m1, xmax = night1_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   annotate("rect", xmin = night2_start_m1, xmax = night2_end_m1, 
-           ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "grey") +
+           ymin = -Inf, ymax = Inf, alpha = 0.2, 
+           fill = "grey",
+           colour = "black", linewidth = 0.3) +
   
   # Add soil temperature (brown dashed) and air temperature (blue solid) lines
   geom_line(aes(y = SoilTemp, color = "Soil Temperature"), 
             linetype = "dashed", linewidth = 1) +
-  geom_line(aes(y = AirTemperature, color = "Air Temperature"), linewidth = 1) +
+  geom_smooth(aes(y = AirTemperature, color = "Air Temperature"), 
+            se = FALSE,         # removes shaded CI band
+            method = "loess",   # good for smaller datasets
+            span = 0.3)  +       # adjust smoothing (lower = more wiggly, higher = smoother)
   # Add moon images
   annotation_custom(moon_img, xmin = 11, xmax = 15, ymin = 30, ymax = 34) +
   annotation_custom(moon_img, xmin = 35, xmax = 39, ymin = 30, ymax = 34) +
@@ -220,7 +244,7 @@ soil_and_air_temp_m1_p1 <- weather_phase1_df |>
     text = element_text(size = 15),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
-    legend.position = c(0.85, 0.70),
+    legend.position = c(0.75, 0.80),
     legend.justification = c("right", "top"),
     legend.background = element_blank(),
     legend.key = element_blank(),
@@ -241,9 +265,9 @@ ggsave(filename =
 #| label: Combine plots (FIG 2)
 
 
-# supress legends in plot 2, use plot 1 legends for combined plot
+# suppress legends in plot 2, use plot 1 legends for combined plot
 plotA <- fog_humidity_m1_p1 + theme(legend.position = "none")
-plotB <- soil_and_air_temp_m1_p1 + theme(legend.position = c(0.92, 0.75))
+plotB <- soil_and_air_temp_m1_p1 + theme(legend.position = c(0.90, 0.85))
 
 combined_plots <- plot_grid(plotA, plotB, ncol = 1, align = "v", rel_heights = c(1, 1))
 
@@ -342,11 +366,23 @@ weather_phase2_gob_df <- weather_phase2_df |>
 fog_humidity_m2_p1 <- weather_phase2_gob_df |>
   ggplot(aes(x=elapsed_time)) +
   geom_bar(aes(y=Fog), stat = "identity", fill='black') +
-  geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
-  geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
+ # geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
+ # geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
+    # Smoothed Humidity line
+  stat_smooth(
+    aes(y = Humidity / coeff),
+    method = "loess", span = 0.3, se = FALSE,
+    color = "#1b98e0", size = 1
+  ) +
+  # Smoothed Humidity area
+  stat_smooth(
+    aes(y = Humidity / coeff),
+    method = "loess", span = 0.3, se = FALSE,
+    geom = "area", fill = "#1b98e0", alpha = 0.2
+  ) +
   ylim(0,2) +
   scale_y_continuous(name = "Fog (mm)", 
-                     sec.axis = sec_axis(~.*coeff, name="Humidity (%)"),expand=c(0,0)) +
+                     sec.axis = sec_axis(~.*coeff, name="Relative Humidity (%)"),expand=c(0,0)) +
   # Add "A." in upper-left corner
   annotate("text", x = 0, y = Inf, label = "A.", hjust = -0.5, 
            vjust = 1.5, size = 6) +
@@ -356,8 +392,8 @@ fog_humidity_m2_p1 <- weather_phase2_gob_df |>
   theme(text = element_text(size = 15)) +
   theme(panel.grid.major = element_blank()) +
   theme(panel.grid.minor = element_blank()) +
-  theme(axis.text.x = element_text(hjust=1)) +
-  scale_x_continuous(limits = c(0, 48), expand=c(0,0))
+ # theme(axis.text.x = element_text(hjust=1)) +
+  scale_x_continuous(limits = c(0, 42), expand=c(0,0))
 fog_humidity_m2_p1
 
 # save the plot
@@ -395,7 +431,7 @@ airtemp_m2_p1 <- weather_phase2_gob_df |>
   theme(text = element_text(size = 15),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
-  scale_x_continuous(limits = c(0, 48))
+  scale_x_continuous(limits = c(0, 42))
 
 airtemp_m2_p1
 
@@ -460,7 +496,11 @@ soil_and_air_temp_m2_p1 <- weather_phase2_gob_df |>
   # Add soil temperature (brown dashed) and air temperature (blue solid) lines
   geom_line(aes(y = SoilTemp, color = "Soil Temperature"), 
             linetype = "dashed", linewidth = 1) +
-  geom_line(aes(y = AirTemp, color = "Air Temperature"), linewidth = 1) +
+  geom_smooth(aes(y = AirTemp, color = "Air Temperature"), 
+            se = FALSE,         # removes shaded CI band
+            method = "loess",   # good for smaller datasets
+            span = 0.3)  +       # adjust smoothing (lower = more wiggly, higher = smoother)
+  
   # Add moon images
   annotation_custom(moon_img, xmin = 11, xmax = 15, ymin = 25, ymax = 29) +
   annotation_custom(moon_img, xmin = 35, xmax = 39, ymin = 25, ymax = 29) +
@@ -475,7 +515,7 @@ soil_and_air_temp_m2_p1 <- weather_phase2_gob_df |>
 
   # Axes and scales
   scale_color_manual(values = c("Soil Temperature" = "#6e4424", "Air Temperature" = "blue")) +
-  scale_x_continuous(limits = c(0, 48), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(0, 42), expand = c(0, 0)) +
   scale_y_continuous(limits = c(0, 30), expand = c(0, 0)) +
   xlab("Elapsed Time (hours)") + 
   ylab("Temperature (°C)") +
@@ -508,7 +548,7 @@ ggsave(filename =
 
 # supress legends in plot 2, use plot 1 legends for combined plot
 plotC <- fog_humidity_m2_p1 + theme(legend.position = "none")
-plotD <- soil_and_air_temp_m2_p1 + theme(legend.position = c(0.92, 0.75))
+plotD <- soil_and_air_temp_m2_p1 + theme(legend.position = c(0.98, 0.85))
 
 combined_plots <- plot_grid(plotC, plotD, ncol = 1, align = "v", rel_heights = c(1, 1))
 
