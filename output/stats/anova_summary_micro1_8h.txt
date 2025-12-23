@@ -21,18 +21,14 @@ Call:
 lm(formula = formula, data = df)
 
 Coefficients:
-                            (Intercept)                             Speciesshrub  
-                                -1.5170                                   0.4352  
-                        LittercondGreen                                Rainfall5  
-                                -0.1354                                   0.7849  
-                             Rainfall10             Speciesshrub:LittercondGreen  
-                                 1.1923                                  -0.6380  
-                 Speciesshrub:Rainfall5                  Speciesshrub:Rainfall10  
-                                -0.3961                                  -0.4943  
-              LittercondGreen:Rainfall5               LittercondGreen:Rainfall10  
-                                -0.5291                                  -0.1250  
- Speciesshrub:LittercondGreen:Rainfall5  Speciesshrub:LittercondGreen:Rainfall10  
-                                 1.4496                                   0.8401  
+                            (Intercept)                             Speciesshrub                          LittercondGreen  
+                                -1.5170                                   0.4352                                  -0.1354  
+                              Rainfall5                               Rainfall10             Speciesshrub:LittercondGreen  
+                                 0.7849                                   1.1923                                  -0.6380  
+                 Speciesshrub:Rainfall5                  Speciesshrub:Rainfall10                LittercondGreen:Rainfall5  
+                                -0.3961                                  -0.4943                                  -0.5291  
+             LittercondGreen:Rainfall10   Speciesshrub:LittercondGreen:Rainfall5  Speciesshrub:LittercondGreen:Rainfall10  
+                                -0.1250                                   1.4496                                   0.8401  
 
 
 $anova_summary
