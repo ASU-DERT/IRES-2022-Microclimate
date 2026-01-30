@@ -11,7 +11,8 @@ editor_options:
 
 This code works up data from the 2022 IRES Microclimate project, litter water holding capacity experiment. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
-File written: 12 July 2025, Heather Throop
+File written: 12 July 2025, Heather Throop\
+2026-01-29 updated location for reading and writing files - HT
 
 ## Preparation Steps
 
@@ -28,11 +29,17 @@ library(emmeans)    # for post hoc Tukey
 library(multcomp) # for compact letter displays of comparisons
 ```
 
+```{r}
+# Use the stored config file to define the path for the DERT Data & Metadata folder (in ASU Dropbox) 
+DERT_Archives <- config::get()
+```
+
 ## Data Ingestion & Calculations
 
 ```{r}
 #| label: read in data and calculate derived variables
-litterWHC_df <- read_csv(here("data","litter_WHC.csv"))
+litterWHC_df <- read_csv(file.path(DERT_Archives, 
+    "NSF_IRES", "2022_Littermicroclimate", "HT_compiled", "data", "litter_WHC.csv"))
 litterWHC_df <- na.omit(litterWHC_df)
 
 #calculate derived moisture variables
@@ -96,9 +103,9 @@ p_WHC <- litterWHC_df |>
 p_WHC
 
 # save the plot
-ggsave(filename = 
-       here("output","figures", "litter_WHC.jpg"),
-       device = "jpeg",
+ggsave(filename = file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", 
+                            "HT_compiled", "output", "figures", "litter_WHC.jpg"),
+      plot = p_WHC,
        width = 8, height = 6, dpi = 300)
 ```
 
@@ -177,7 +184,8 @@ print(cld_littercond)
 print(cld_interaction)
 
 # === Save results including CLDs ===
-sink(here("output", "stats","whc_analysis_results.txt"))
+sink(file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", 
+            "HT_compiled", "output", "stats", "whc_analysis_results.txt"))
 
 cat("===== Two-Way ANOVA Summary =====\n")
 print(summary(aov_model))

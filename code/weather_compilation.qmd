@@ -11,6 +11,8 @@ editor_options:
 
 This file works up met station data from the 2022 IRES Microclimate project, microphases 1 and 2. Original data were downloaded from the SASSCAL website.
 
+NOTE: The storage location for the met data files has been changed to the DERT Dropbox. Location needs to be updated (use config) for reading and writing files for this script to run properly. HT 2026-01-29
+
 File written: 22 July 2025, Heather Throop\
 Last update:
 
