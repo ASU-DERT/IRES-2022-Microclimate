@@ -484,41 +484,34 @@ print(micro1_h_above_15pct_moisture)
 ```
 
 ```{r}
-#| label: plot-of-time-litter-wet
+#| label: plot-of-time-litter-wet-stacked
 
-# (assumes ggpattern, dplyr, tidyr, ggplot2 are loaded and
-#  micro1_h_above_15pct_moisture and TYPE_colors exist)
-
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ggpattern)
-
-# prepare data with explicit ymin/ymax per stack (same as before)
-plot_df <- micro1_h_above_15pct_moisture %>%
-  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) %>%
+# prepare data with explicit ymin/ymax per stack
+plot_df <- micro1_h_above_15pct_moisture |>
+  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
   pivot_longer(
     cols = starts_with("hours_above_15_"),
     names_to = "period",
     values_to = "hours"
-  ) %>%
+  ) |>
   mutate(
     period = case_when(
       period == "hours_above_15_0_24"  ~ "0–24 h",
       period == "hours_above_15_24_48" ~ "24–48 h",
       TRUE ~ period
     ),
+    # keep stacking order bottom -> top
     period = factor(period, levels = c("0–24 h", "24–48 h")),
     Rainfall = factor(Rainfall, levels = unique(Rainfall)),
     TYPE = factor(TYPE, levels = unique(TYPE))
-  ) %>%
-  arrange(Rainfall, TYPE, period) %>%
-  group_by(Rainfall, TYPE) %>%
+  ) |>
+  arrange(Rainfall, TYPE, period) |>
+  group_by(Rainfall, TYPE) |>
   mutate(
     ymin = cumsum(lag(hours, default = 0)),
     ymax = ymin + hours
-  ) %>%
-  ungroup() %>%
+  ) |>
+  ungroup() |>
   mutate(x = as.numeric(TYPE))
 
 # ensure TYPE_colors is named by TYPE levels; fallback if not
@@ -532,16 +525,17 @@ if (is.null(names(TYPE_colors)) || !all(type_levels %in% names(TYPE_colors))) {
 bar_width <- 0.7
 half_w <- bar_width / 2
 
-# pattern appearance (tweak as desired)
-pattern_fill_color <- "white"   # color of hatch lines
+# pattern appearance for the hatched (0-24 h) segments
+pattern_fill_color <- "white"   # color of hatch lines (white often shows well on dark fills)
 pattern_angle <- 45
 pattern_density <- 0.6
 pattern_spacing <- 0.02
 
-# Use geom_rect_pattern for both layers so 'pattern' appears in legend.
-# Bottom: pattern = "none"; Top: pattern = "stripe"
+# Build plot:
+# - map pattern aesthetic to 'period' so legend is created
+# - set scale_pattern_manual so "0–24 h" -> "stripe" (hatched), "24–48 h" -> "none" (solid)
 p <- ggplot() +
-  # bottom solid segments (0-24 h)
+  # bottom (0-24 h) hatched segments
   geom_rect_pattern(
     data = filter(plot_df, period == "0–24 h" & hours > 0),
     aes(
@@ -550,10 +544,14 @@ p <- ggplot() +
       fill = TYPE,
       pattern = period
     ),
-    pattern = "none",        # explicit (redundant with mapping but clearer)
+    pattern = "stripe",       # explicit; mapped via aes too
+    pattern_fill = pattern_fill_color,
+    pattern_angle = pattern_angle,
+    pattern_density = pattern_density,
+    pattern_spacing = pattern_spacing,
     colour = NA
   ) +
-  # top hatched segments (24-48 h)
+  # top (24-48 h) solid segments
   geom_rect_pattern(
     data = filter(plot_df, period == "24–48 h" & hours > 0),
     aes(
@@ -562,33 +560,14 @@ p <- ggplot() +
       fill = TYPE,
       pattern = period
     ),
-    pattern = "stripe",      # explicit hatched pattern
-    pattern_fill = pattern_fill_color,
-    pattern_angle = pattern_angle,
-    pattern_density = pattern_density,
-    pattern_spacing = pattern_spacing,
+    pattern = "none",         # explicit solid
     colour = NA
   ) +
-  facet_grid(. ~ Rainfall, scales = "free_x", space = "free") +
+  facet_grid(. ~ Rainfall,
+           labeller = labeller(Rainfall = function(x) paste0(x, " mm Addition"))) +
   scale_fill_manual(values = TYPE_colors_named) +
-  # map pattern names to actual pattern types (ensure order matches period factor)
-  scale_pattern_manual(values = c("0–24 h" = "none", "24–48 h" = "stripe")) +
-  # guides: show fill (TYPE) first, then pattern (Time period)
-  guides(
-    fill = guide_legend(order = 1, title = "TYPE"),
-    pattern = guide_legend(order = 2, title = "Time period",
-                           override.aes = list(
-                             # make example legend boxes visible regardless of TYPE fills
-                             fill = c("grey70", "grey70"),
-                             colour = c(NA, NA),
-                             pattern_fill = c(pattern_fill_color, pattern_fill_color),
-                             pattern_spacing = c(pattern_spacing, pattern_spacing),
-                             pattern_density = c(pattern_density, pattern_density),
-                             # pattern values in order of factor levels
-                             pattern = c("none", "stripe")
-                           ))
-  ) +
-  # x axis labels for TYPE at integer positions
+  # pattern mapping: 0-24 hatched; 24-48 solid
+  scale_pattern_manual(values = c("0–24 h" = "stripe", "24–48 h" = "none")) +
   scale_x_continuous(
     breaks = seq_along(type_levels),
     labels = type_levels,
@@ -596,20 +575,136 @@ p <- ggplot() +
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "TYPE",
-    y = ">15% moisture (h)" ) +
-  theme_classic(base_size = 12) +
-  theme(
-    legend.position = "top",
-    legend.box = "vertical",
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    strip.background = element_rect(fill = "gray95", color = "black"),
-    strip.text = element_text(face = "bold"),
-    panel.spacing = unit(0.5, "lines")
+   # x = "TYPE",
+    y = "Microbial Activity Window (h)",
+  #  title = "Cumulative hours wet by treatment",
+  #  subtitle = "Hatched = 0–24 h (bottom); Solid = 24–48 h (top)"
   ) +
-  scale_y_continuous(expand = c(0, 0))
+  theme_classic(base_size = 16) +
+  scale_y_continuous(limits = c(0, 27), expand = c(0, 0)) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.key.width = unit(1.5, "cm"),
+    legend.justification = c("left", "top"),
+    legend.background = element_blank(),
+    legend.key.size = unit(0.8, "lines"),
+    legend.spacing.x = unit(0.3, "cm"),
+    legend.text = element_text(size = 12)
+  ) 
 
 print(p)
+
+# save the plot
+ggsave(filename = 
+       file.path(fig_dir, "microphase1_time_wet_stacked.jpg"),
+       device = "jpeg",
+       width = 8, height = 6, dpi = 300)
+
+```
+
+```{r}
+#| label: plot-of-time-litter-wet-clustered
+
+# prepare long data (period is the x axis)
+plot_df <- micro1_h_above_15pct_moisture |>
+  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
+  pivot_longer(
+    cols = starts_with("hours_above_15_"),
+    names_to = "period",
+    values_to = "hours"
+  ) |>
+  mutate(
+    period = case_when(
+      period == "hours_above_15_0_24"  ~ "0–24 h",
+      period == "hours_above_15_24_48" ~ "24–48 h",
+      TRUE ~ period
+    ),
+    # ensure ordering: 0-24 cluster first, then 24-48
+    period = factor(period, levels = c("0–24 h", "24–48 h")),
+    Rainfall = factor(Rainfall, levels = unique(Rainfall)),
+    TYPE = factor(TYPE, levels = unique(TYPE))
+  )
+
+# ensure TYPE_colors named
+type_levels <- levels(plot_df$TYPE)
+if (is.null(names(TYPE_colors)) || !all(type_levels %in% names(TYPE_colors))) {
+  TYPE_colors_named <- setNames(TYPE_colors[seq_along(type_levels)], type_levels)
+} else {
+  TYPE_colors_named <- TYPE_colors
+}
+
+# bar sizing
+bar_width <- 0.8
+dodge_width <- 0.9
+
+# pattern settings for hatched (0-24 h)
+pattern_fill_color <- "white"
+pattern_angle <- 45
+pattern_density <- 0.6
+pattern_spacing <- 0.02
+
+# Plot: x = period, within each period dodge bars by TYPE
+p1 <- ggplot(plot_df, aes(x = period, y = hours,
+                         fill = TYPE, pattern = period)) +
+  geom_col_pattern(
+    position = position_dodge(width = dodge_width),
+    width = bar_width,
+    colour = NA,
+    pattern_fill   = "white",    # color of hatch lines
+    pattern_angle  = 45,
+    pattern_density = 0.18,      # LOWER -> thinner, less filled stripes
+    pattern_spacing = 0.06,      # HIGHER -> more distance between stripes
+    pattern_key_scale_factor = 0.6
+  ) +
+  facet_grid(. ~ Rainfall,
+             labeller = labeller(Rainfall = function(x) paste0(x, " mm Addition")),
+             scales = "free_x", space = "free") +
+  scale_fill_manual(values = TYPE_colors_named) +
+  # map period -> pattern: hatched for 0-24, solid for 24-48
+  scale_pattern_manual(values = c("0–24 h" = "stripe", "24–48 h" = "none")) +
+  # axis labels and limits
+  labs(x = "Time", y = "Microbial Activity Window (h)") +
+  scale_y_continuous(limits = c(0, 15), expand = c(0, 0)) +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    axis.text.x = element_text(angle = 0, vjust = 0.5),
+    legend.position = "none"#,
+#    legend.key.width = unit(1.5, "cm"),
+#    legend.justification = c("left", "top"),
+#    legend.background = element_blank(),
+#    legend.key.size = unit(0.8, "lines"),
+#    legend.spacing.x = unit(0.3, "cm"),
+#    legend.text = element_text(size = 12)
+  )
+
+# ensure separate, clear legends: TYPE fills then pattern (hatched vs solid)
+p <- p + guides(
+  fill = guide_legend(order = 1, title = "TYPE"),
+  pattern = guide_legend(order = 2, title = "Time period",
+                         override.aes = list(
+                           fill = c("grey70", "grey70"),
+                           pattern = c("stripe", "none"),
+                           pattern_fill = c(pattern_fill_color, pattern_fill_color),
+                           pattern_density = c(pattern_density, NA),
+                           pattern_spacing = c(pattern_spacing, NA)
+                         ))
+)
+
+print(p1)
+
+# save plot
+ggsave(filename = file.path(fig_dir, "microphase1_time_wet_grouped.jpg"),
+       plot = p1, device = "jpeg", width = 8, height = 6, dpi = 300)
+
 
 ```
 
@@ -1147,6 +1242,174 @@ micro2_h_above_15pct_moisture <- micro2_means |>
 
 # Show results
 print(micro2_h_above_15pct_moisture)
+
+
+```
+
+```{r}
+#| label: plot-litter-time-wet-m2
+
+# set threshold value of 15% moisture
+th <- 15
+
+# --------------------------
+# 1) compute hours above threshold with 6-24 and 24-42 breakdown
+# --------------------------
+micro2_h_above_15pct_moisture <- micro2_means %>%
+  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) %>%
+  arrange(DEPTH, Rainfall, elapsed_time) %>%
+  group_by(DEPTH, Rainfall) %>%
+  mutate(
+    t1 = elapsed_time,
+    y1 = LitterMoisture_mean,
+    t2 = lead(elapsed_time),
+    y2 = lead(LitterMoisture_mean)
+  ) %>%
+  filter(!is.na(t2) & !is.na(y1) & !is.na(y2)) %>%
+  rowwise() %>%
+  mutate(
+    # above-interval endpoints for the segment (NA if entirely below)
+    above_start = {
+      if (y1 >= th && y2 >= th) {
+        t1
+      } else if (y1 < th && y2 < th) {
+        NA_real_
+      } else {
+        frac <- (th - y1) / (y2 - y1)
+        t_cross <- t1 + frac * (t2 - t1)
+        if (y1 < th && y2 >= th) t_cross else t1
+      }
+    },
+    above_end = {
+      if (y1 >= th && y2 >= th) {
+        t2
+      } else if (y1 < th && y2 < th) {
+        NA_real_
+      } else {
+        frac <- (th - y1) / (y2 - y1)
+        t_cross <- t1 + frac * (t2 - t1)
+        if (y1 < th && y2 >= th) t2 else t_cross
+      }
+    },
+    seg_hours_above = ifelse(is.na(above_start) | is.na(above_end), 0, pmax(0, above_end - above_start)),
+    seg_hours_above_6_24 = ifelse(is.na(above_start) | is.na(above_end), 0,
+                                  pmax(0, pmin(above_end, 24) - pmax(above_start, 6))),
+    seg_hours_above_24_42 = ifelse(is.na(above_start) | is.na(above_end), 0,
+                                   pmax(0, pmin(above_end, 42) - pmax(above_start, 24)))
+  ) %>%
+  ungroup() %>%
+  group_by(DEPTH, Rainfall) %>%
+  summarise(
+    hours_above_15_total = sum(seg_hours_above, na.rm = TRUE),
+    hours_above_15_6_24  = sum(seg_hours_above_6_24, na.rm = TRUE),
+    hours_above_15_24_42 = sum(seg_hours_above_24_42, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(DEPTH, Rainfall)
+
+print(micro2_h_above_15pct_moisture)
+
+# --------------------------
+# 2) pivot into long form for plotting (period on x axis)
+# --------------------------
+plot_df <- micro2_h_above_15pct_moisture %>%
+  pivot_longer(
+    cols = c(hours_above_15_6_24, hours_above_15_24_42),
+    names_to = "period",
+    values_to = "hours"
+  ) %>%
+  mutate(
+    period = case_when(
+      period == "hours_above_15_6_24"  ~ "6–24 h",
+      period == "hours_above_15_24_42" ~ "24–42 h",
+      TRUE ~ period
+    ),
+    # ensure x-order: 6-24 cluster first, then 24-42
+    period = factor(period, levels = c("6–24 h", "24–42 h")),
+    DEPTH = factor(DEPTH, levels = unique(DEPTH)),
+    Rainfall = factor(Rainfall, levels = unique(Rainfall))
+  )
+
+# --------------------------
+# 3) Rainfall colors: use Rainfall_colors if present, else fallback
+# --------------------------
+# --- Use Rainfall_colors for fills (safe mapping) ---
+if (!exists("Rainfall_colors") || !is.character(Rainfall_colors) || length(Rainfall_colors) == 0) {
+  # fallback if Rainfall_colors not defined
+  nrain <- length(levels(plot_df$Rainfall))
+  Rainfall_colors_named <- setNames(RColorBrewer::brewer.pal(max(3, nrain), "Set2")[1:nrain],
+                                    levels(plot_df$Rainfall))
+} else {
+  # If Rainfall_colors has names that match levels, use as-is; otherwise map in order
+  if (is.null(names(Rainfall_colors)) || !all(levels(plot_df$Rainfall) %in% names(Rainfall_colors))) {
+    Rainfall_colors_named <- setNames(Rainfall_colors[seq_len(length(levels(plot_df$Rainfall)))],
+                                      levels(plot_df$Rainfall))
+  } else {
+    Rainfall_colors_named <- Rainfall_colors
+  }
+}
+
+# pattern / plotting parameters (same as before)
+bar_width <- 0.8
+dodge_width <- 0.9
+pattern_fill_color <- "white"
+pattern_angle <- 45
+pattern_density <- 0.6
+pattern_spacing <- 0.02
+
+# ---- Plot using Rainfall_colors_named for fill ----
+p3 <- ggplot(plot_df, aes(x = period, y = hours, fill = Rainfall, pattern = period)) +
+  geom_col_pattern(
+    position = position_dodge(width = dodge_width),
+    width = bar_width,
+    colour = NA,
+    pattern_fill   = "white",    # color of hatch lines
+    pattern_angle  = 45,
+    pattern_density = 0.18,      # LOWER -> thinner, less filled stripes
+    pattern_spacing = 0.06,      # HIGHER -> more distance between stripes
+    pattern_key_scale_factor = 0.6
+  ) +
+  facet_grid(. ~ DEPTH,
+           labeller = labeller(DEPTH = c("0" = "Surface",
+                                         "1" = "1 cm Depth",
+                                         "3" = "3 cm Depth")),
+           scales = "free_x", space = "free") +
+  scale_fill_manual(values = Rainfall_colors_named) +
+  scale_pattern_manual(values = c("6–24 h" = "stripe", "24–42 h" = "none")) +
+  labs(x = "Time", y = "Microbial Activity Window (h)") +
+  scale_y_continuous(limits = c(0, 20), expand = c(0, 0)) +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    axis.text.x = element_text(angle = 0, vjust = 0.5),
+    legend.position = "none",
+    legend.key.width = unit(1.5, "cm"),
+    legend.justification = c("left", "top"),
+    legend.background = element_blank(),
+    legend.key.size = unit(0.8, "lines"),
+    legend.spacing.x = unit(0.3, "cm"),
+    legend.text = element_text(size = 11)
+  ) +
+  guides(
+    fill = guide_legend(order = 1, title = "Rainfall"),
+    pattern = guide_legend(order = 2, title = "Time period",
+                           override.aes = list(
+                             fill = c("grey70", "grey70"),
+                             pattern = c("stripe", "none"),
+                             pattern_fill = c(pattern_fill_color, pattern_fill_color),
+                             pattern_density = c(pattern_density, NA),
+                             pattern_spacing = c(pattern_spacing, NA)
+                           ))
+  )
+
+print(p3)
+
+# save plot
+ggsave(filename = file.path(fig_dir, "microphase2_time_wet_by_depth_and_rainfall.jpg"),
+       plot = p3, device = "jpeg", width = 9, height = 5, dpi = 300)
 
 
 ```
