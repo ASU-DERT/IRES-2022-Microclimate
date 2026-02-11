@@ -31,6 +31,7 @@ library(cowplot)
 library(ggpattern)
 library(png)
 library(grid)
+library(ggpattern)
 
 sessionInfo()
 ```
@@ -387,6 +388,229 @@ ggsave(filename =
        file.path(fig_dir, "microphase1_littermoisture_by_ppt.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
+```
+
+### Litter time wet
+
+```{r}
+#| label: litter-moisture-time-above-threshold
+
+# This uses linear-method to determine how much time (in hours) litter moisture content is above a threshold value. Threshold values are from Evans et al. 2020, who found CO2 flux from litter ranging from xx to xx% moisture. 
+
+# threshold
+th <- 15
+
+micro1_h_above_15pct_moisture <- micro1_means |>
+  select(TYPE, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  arrange(TYPE, Rainfall, elapsed_time) |>
+  group_by(TYPE, Rainfall) |>
+  # compute per-segment info using lead()
+  mutate(
+    t1 = elapsed_time,
+    y1 = LitterMoisture_mean,
+    t2 = lead(elapsed_time),
+    y2 = lead(LitterMoisture_mean)
+  ) |>
+  # drop the last row per group because it has no next-point segment
+  filter(!is.na(t2) & !is.na(y1) & !is.na(y2)) %>%
+  # compute time above threshold for each linear segment and the above-interval endpoints
+  rowwise() |>
+  mutate(
+    # compute crossing / above interval for the segment
+    above_start = {
+      if (y1 >= th && y2 >= th) {
+        t1
+      } else if (y1 < th && y2 < th) {
+        NA_real_
+      } else {
+        frac = (th - y1) / (y2 - y1)
+        t_cross = t1 + frac * (t2 - t1)
+        if (y1 < th && y2 >= th) {
+          t_cross
+        } else {
+          t1
+        }
+      }
+    },
+    above_end = {
+      if (y1 >= th && y2 >= th) {
+        t2
+      } else if (y1 < th && y2 < th) {
+        NA_real_
+      } else {
+        frac = (th - y1) / (y2 - y1)
+        t_cross = t1 + frac * (t2 - t1)
+        if (y1 < th && y2 >= th) {
+          t2
+        } else {
+          t_cross
+        }
+      }
+    },
+    # total segment hours above threshold (keeps numerical stability)
+    seg_hours_above = ifelse(
+      is.na(above_start) | is.na(above_end),
+      0,
+      pmax(0, above_end - above_start)
+    ),
+    # overlap with 0-24 window
+    seg_hours_above_0_24 = ifelse(
+      is.na(above_start) | is.na(above_end),
+      0,
+      pmax(0, pmin(above_end, 24) - pmax(above_start, 0))
+    ),
+    # overlap with 24-48 window
+    seg_hours_above_24_48 = ifelse(
+      is.na(above_start) | is.na(above_end),
+      0,
+      pmax(0, pmin(above_end, 48) - pmax(above_start, 24))
+    )
+  ) |>
+  ungroup() |>
+  # sum segment durations per curve
+  group_by(TYPE, Rainfall) |>
+  summarise(
+    hours_above_15_total = sum(seg_hours_above, na.rm = TRUE),
+    hours_above_15_0_24  = sum(seg_hours_above_0_24, na.rm = TRUE),
+    hours_above_15_24_48 = sum(seg_hours_above_24_48, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(TYPE, Rainfall)
+
+# Show results
+print(micro1_h_above_15pct_moisture)
+
+
+```
+
+```{r}
+#| label: plot-of-time-litter-wet
+
+# (assumes ggpattern, dplyr, tidyr, ggplot2 are loaded and
+#  micro1_h_above_15pct_moisture and TYPE_colors exist)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggpattern)
+
+# prepare data with explicit ymin/ymax per stack (same as before)
+plot_df <- micro1_h_above_15pct_moisture %>%
+  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) %>%
+  pivot_longer(
+    cols = starts_with("hours_above_15_"),
+    names_to = "period",
+    values_to = "hours"
+  ) %>%
+  mutate(
+    period = case_when(
+      period == "hours_above_15_0_24"  ~ "0–24 h",
+      period == "hours_above_15_24_48" ~ "24–48 h",
+      TRUE ~ period
+    ),
+    period = factor(period, levels = c("0–24 h", "24–48 h")),
+    Rainfall = factor(Rainfall, levels = unique(Rainfall)),
+    TYPE = factor(TYPE, levels = unique(TYPE))
+  ) %>%
+  arrange(Rainfall, TYPE, period) %>%
+  group_by(Rainfall, TYPE) %>%
+  mutate(
+    ymin = cumsum(lag(hours, default = 0)),
+    ymax = ymin + hours
+  ) %>%
+  ungroup() %>%
+  mutate(x = as.numeric(TYPE))
+
+# ensure TYPE_colors is named by TYPE levels; fallback if not
+type_levels <- levels(plot_df$TYPE)
+if (is.null(names(TYPE_colors)) || !all(type_levels %in% names(TYPE_colors))) {
+  TYPE_colors_named <- setNames(TYPE_colors[seq_along(type_levels)], type_levels)
+} else {
+  TYPE_colors_named <- TYPE_colors
+}
+
+bar_width <- 0.7
+half_w <- bar_width / 2
+
+# pattern appearance (tweak as desired)
+pattern_fill_color <- "white"   # color of hatch lines
+pattern_angle <- 45
+pattern_density <- 0.6
+pattern_spacing <- 0.02
+
+# Use geom_rect_pattern for both layers so 'pattern' appears in legend.
+# Bottom: pattern = "none"; Top: pattern = "stripe"
+p <- ggplot() +
+  # bottom solid segments (0-24 h)
+  geom_rect_pattern(
+    data = filter(plot_df, period == "0–24 h" & hours > 0),
+    aes(
+      xmin = x - half_w, xmax = x + half_w,
+      ymin = ymin, ymax = ymax,
+      fill = TYPE,
+      pattern = period
+    ),
+    pattern = "none",        # explicit (redundant with mapping but clearer)
+    colour = NA
+  ) +
+  # top hatched segments (24-48 h)
+  geom_rect_pattern(
+    data = filter(plot_df, period == "24–48 h" & hours > 0),
+    aes(
+      xmin = x - half_w, xmax = x + half_w,
+      ymin = ymin, ymax = ymax,
+      fill = TYPE,
+      pattern = period
+    ),
+    pattern = "stripe",      # explicit hatched pattern
+    pattern_fill = pattern_fill_color,
+    pattern_angle = pattern_angle,
+    pattern_density = pattern_density,
+    pattern_spacing = pattern_spacing,
+    colour = NA
+  ) +
+  facet_grid(. ~ Rainfall, scales = "free_x", space = "free") +
+  scale_fill_manual(values = TYPE_colors_named) +
+  # map pattern names to actual pattern types (ensure order matches period factor)
+  scale_pattern_manual(values = c("0–24 h" = "none", "24–48 h" = "stripe")) +
+  # guides: show fill (TYPE) first, then pattern (Time period)
+  guides(
+    fill = guide_legend(order = 1, title = "TYPE"),
+    pattern = guide_legend(order = 2, title = "Time period",
+                           override.aes = list(
+                             # make example legend boxes visible regardless of TYPE fills
+                             fill = c("grey70", "grey70"),
+                             colour = c(NA, NA),
+                             pattern_fill = c(pattern_fill_color, pattern_fill_color),
+                             pattern_spacing = c(pattern_spacing, pattern_spacing),
+                             pattern_density = c(pattern_density, pattern_density),
+                             # pattern values in order of factor levels
+                             pattern = c("none", "stripe")
+                           ))
+  ) +
+  # x axis labels for TYPE at integer positions
+  scale_x_continuous(
+    breaks = seq_along(type_levels),
+    labels = type_levels,
+    expand = c(0.02, 0.02)
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = "TYPE",
+    y = ">15% moisture (h)" ) +
+  theme_classic(base_size = 12) +
+  theme(
+    legend.position = "top",
+    legend.box = "vertical",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.background = element_rect(fill = "gray95", color = "black"),
+    strip.text = element_text(face = "bold"),
+    panel.spacing = unit(0.5, "lines")
+  ) +
+  scale_y_continuous(expand = c(0, 0))
+
+print(p)
+
 ```
 
 ## iButton Data Plotting
@@ -861,6 +1085,70 @@ ggsave(filename =
        file.path(fig_dir, "microphase2_littermoisture_by_ppt_and_depth.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
+```
+
+### Litter time wet
+
+```{r}
+#| label: litter-moisture-time-above-threshold
+
+# This uses linear-method to determine how much time (in hours) litter moisture content is above a threshold value. Threshold values are from Evans et al. 2020, who found CO2 flux from litter ranging from xx to xx% moisture. 
+
+# threshold
+th <- 15
+
+micro2_h_above_15pct_moisture <- micro2_means |>
+  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  arrange(DEPTH, Rainfall, elapsed_time) |>
+  group_by(DEPTH, Rainfall) |>
+  # compute per-segment info using lead()
+  mutate(
+    t1 = elapsed_time,
+    y1 = LitterMoisture_mean,
+    t2 = lead(elapsed_time),
+    y2 = lead(LitterMoisture_mean)
+  ) |>
+  # drop the last row per group because it has no next-point segment
+  filter(!is.na(t2) & !is.na(y1) & !is.na(y2)) |>
+  # compute time above threshold for each linear segment
+  rowwise() |>
+  mutate(
+    seg_hours_above = {
+      # cases:
+      if (y1 >= th && y2 >= th) {
+        # entire segment above
+        seg = t2 - t1
+      } else if (y1 < th && y2 < th) {
+        # entire segment below
+        seg = 0
+      } else {
+        # segment crosses threshold: compute crossing time by linear interpolation
+        # fraction along segment where value == th:
+        frac = (th - y1) / (y2 - y1)   # safe because y2 != y1 here
+        t_cross = t1 + frac * (t2 - t1)
+        if (y1 < th && y2 >= th) {
+          seg = t2 - t_cross   # part after crossing is above
+        } else {
+          seg = t_cross - t1   # part before crossing is above
+        }
+      }
+      # protect tiny negatives due to numerical error
+      pmax(seg, 0)
+    }
+  ) |>
+  ungroup() |>
+  # sum segment durations per curve
+  group_by(DEPTH, Rainfall) |>
+  summarise(
+    hours_above_15 = sum(seg_hours_above, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(DEPTH, Rainfall)
+
+# Show results
+print(micro2_h_above_15pct_moisture)
+
+
 ```
 
 ## iButton Data Plotting
