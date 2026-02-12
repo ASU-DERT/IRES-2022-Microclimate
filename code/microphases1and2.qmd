@@ -395,7 +395,7 @@ ggsave(filename =
 ```{r}
 #| label: litter-moisture-time-above-threshold
 
-# This uses linear-method to determine how much time (in hours) litter moisture content is above a threshold value. Threshold values are from Evans et al. 2020, who found CO2 flux from litter ranging from xx to xx% moisture. 
+# This uses linear-method to determine how much time (in hours) litter moisture content is above a threshold value. Threshold values are from Evans et al. 2020, who found CO2 flux from litter ranging from 13 to 20% moisture. 
 
 # threshold
 th <- 15
