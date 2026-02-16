@@ -612,6 +612,12 @@ ggsave(filename =
 
 # prepare long data (period is the x axis)
 plot_df <- micro1_h_above_15pct_moisture |>
+   mutate(
+    period = case_when(
+      period == "hours_above_15_0_24"  ~ "0–24 h",
+      period == "hours_above_15_24_48" ~ "24–48 h",
+      TRUE ~ period
+    )
   select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
   pivot_longer(
     cols = starts_with("hours_above_15_"),
@@ -705,6 +711,80 @@ print(p1)
 ggsave(filename = file.path(fig_dir, "microphase1_time_wet_grouped.jpg"),
        plot = p1, device = "jpeg", width = 8, height = 6, dpi = 300)
 
+
+```
+
+```{r}
+#| label: %-time-above-threshold-plot
+
+
+# ---- compute percent time over threshold (use 24-hour denominators) ----
+micro1_h_above_15pct_moisture <- micro1_h_above_15pct_moisture %>%
+  mutate(
+    pct_time_over_thold_day1 = hours_above_15_0_24  / 20 * 100,
+    pct_time_over_thold_day2 = hours_above_15_24_48 / 24 * 100
+  )
+
+# ---- pivot to long format so both periods plot ----
+plot_df <- micro1_h_above_15pct_moisture %>%
+  pivot_longer(
+    cols = c(pct_time_over_thold_day1, pct_time_over_thold_day2),
+    names_to = "period",
+    values_to = "pct"
+  ) %>%
+  mutate(
+    period = case_when(
+      period == "pct_time_over_thold_day1" ~ "4–24 h",
+      period == "pct_time_over_thold_day2" ~ "24–48 h",
+      TRUE ~ period
+    ),
+    period = factor(period, levels = c("4–24 h", "24–48 h")),
+    # ensure TYPE and Rainfall are factors with consistent ordering
+    TYPE = factor(TYPE, levels = unique(TYPE)),
+    Rainfall = factor(Rainfall, levels = unique(Rainfall))
+  )
+
+# ---- make sure TYPE_colors_named exists (fallback if not) ----
+if (!exists("TYPE_colors_named")) {
+  if (exists("TYPE_colors") && is.character(TYPE_colors)) {
+    if (is.null(names(TYPE_colors))) {
+      TYPE_colors_named <- setNames(TYPE_colors[seq_along(levels(plot_df$TYPE))], levels(plot_df$TYPE))
+    } else {
+      TYPE_colors_named <- TYPE_colors
+    }
+  } else {
+    ntype <- length(levels(plot_df$TYPE))
+    TYPE_colors_named <- setNames(RColorBrewer::brewer.pal(max(3, ntype), "Dark2")[1:ntype], levels(plot_df$TYPE))
+  }
+}
+
+# ---- plotting: grouped (dodged) bars by TYPE, faceted by Rainfall ----
+p2 <- ggplot(plot_df, aes(x = period, y = pct, fill = TYPE)) +
+  geom_col(position = position_dodge(width = 0.9), width = 0.8, colour = NA) +
+  facet_grid(. ~ Rainfall,
+             labeller = labeller(Rainfall = function(x) paste0(x, " mm Addition")),
+             scales = "free_x", space = "free") +
+  scale_fill_manual(values = TYPE_colors_named) +
+  labs(x = "Time", y = "Time over threshold (%)") +
+  scale_y_continuous(limits = c(0, 75), expand = c(0, 0)) +   # change upper limit as desired
+  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) + # widen gap between the two period clusters
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    axis.text.x = element_text(angle = 0, vjust = 0.5),
+    legend.position = "top"
+  ) +
+  theme(
+  legend.position = c(0.05, 0.92),
+  legend.justification = c(0, 1),
+  legend.background = element_blank(),
+  legend.box.background = element_blank(),
+  legend.title = element_blank())
+
+print(p2)
 
 ```
 
