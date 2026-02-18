@@ -608,113 +608,6 @@ ggsave(filename =
 ```
 
 ```{r}
-#| label: plot-of-time-litter-wet-clustered
-
-# prepare long data (period is the x axis)
-plot_df <- micro1_h_above_15pct_moisture |>
-   mutate(
-    period = case_when(
-      period == "hours_above_15_0_24"  ~ "0–24 h",
-      period == "hours_above_15_24_48" ~ "24–48 h",
-      TRUE ~ period
-    )
-  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
-  pivot_longer(
-    cols = starts_with("hours_above_15_"),
-    names_to = "period",
-    values_to = "hours"
-  ) |>
-  mutate(
-    period = case_when(
-      period == "hours_above_15_0_24"  ~ "0–24 h",
-      period == "hours_above_15_24_48" ~ "24–48 h",
-      TRUE ~ period
-    ),
-    # ensure ordering: 0-24 cluster first, then 24-48
-    period = factor(period, levels = c("0–24 h", "24–48 h")),
-    Rainfall = factor(Rainfall, levels = unique(Rainfall)),
-    TYPE = factor(TYPE, levels = unique(TYPE))
-  )
-
-# ensure TYPE_colors named
-type_levels <- levels(plot_df$TYPE)
-if (is.null(names(TYPE_colors)) || !all(type_levels %in% names(TYPE_colors))) {
-  TYPE_colors_named <- setNames(TYPE_colors[seq_along(type_levels)], type_levels)
-} else {
-  TYPE_colors_named <- TYPE_colors
-}
-
-# bar sizing
-bar_width <- 0.8
-dodge_width <- 0.9
-
-# pattern settings for hatched (0-24 h)
-pattern_fill_color <- "white"
-pattern_angle <- 45
-pattern_density <- 0.6
-pattern_spacing <- 0.02
-
-# Plot: x = period, within each period dodge bars by TYPE
-p1 <- ggplot(plot_df, aes(x = period, y = hours,
-                         fill = TYPE, pattern = period)) +
-  geom_col_pattern(
-    position = position_dodge(width = dodge_width),
-    width = bar_width,
-    colour = NA,
-    pattern_fill   = "white",    # color of hatch lines
-    pattern_angle  = 45,
-    pattern_density = 0.18,      # LOWER -> thinner, less filled stripes
-    pattern_spacing = 0.06,      # HIGHER -> more distance between stripes
-    pattern_key_scale_factor = 0.6
-  ) +
-  facet_grid(. ~ Rainfall,
-             labeller = labeller(Rainfall = function(x) paste0(x, " mm Addition")),
-             scales = "free_x", space = "free") +
-  scale_fill_manual(values = TYPE_colors_named) +
-  # map period -> pattern: hatched for 0-24, solid for 24-48
-  scale_pattern_manual(values = c("0–24 h" = "stripe", "24–48 h" = "none")) +
-  # axis labels and limits
-  labs(x = "Time", y = "Microbial Activity Window (h)") +
-  scale_y_continuous(limits = c(0, 15), expand = c(0, 0)) +
-  theme_classic(base_size = 16) +
-  theme(
-    panel.spacing = unit(1, "lines"),
-    strip.background = element_rect(fill = "gray80", color = "black"),
-    strip.text = element_text(color = "black"),
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
-    axis.text.x = element_text(angle = 0, vjust = 0.5),
-    legend.position = "none"#,
-#    legend.key.width = unit(1.5, "cm"),
-#    legend.justification = c("left", "top"),
-#    legend.background = element_blank(),
-#    legend.key.size = unit(0.8, "lines"),
-#    legend.spacing.x = unit(0.3, "cm"),
-#    legend.text = element_text(size = 12)
-  )
-
-# ensure separate, clear legends: TYPE fills then pattern (hatched vs solid)
-p <- p + guides(
-  fill = guide_legend(order = 1, title = "TYPE"),
-  pattern = guide_legend(order = 2, title = "Time period",
-                         override.aes = list(
-                           fill = c("grey70", "grey70"),
-                           pattern = c("stripe", "none"),
-                           pattern_fill = c(pattern_fill_color, pattern_fill_color),
-                           pattern_density = c(pattern_density, NA),
-                           pattern_spacing = c(pattern_spacing, NA)
-                         ))
-)
-
-print(p1)
-
-# save plot
-ggsave(filename = file.path(fig_dir, "microphase1_time_wet_grouped.jpg"),
-       plot = p1, device = "jpeg", width = 8, height = 6, dpi = 300)
-
-
-```
-
-```{r}
 #| label: %-time-above-threshold-plot
 
 
@@ -760,14 +653,20 @@ if (!exists("TYPE_colors_named")) {
 
 # ---- plotting: grouped (dodged) bars by TYPE, faceted by Rainfall ----
 p2 <- ggplot(plot_df, aes(x = period, y = pct, fill = TYPE)) +
-  geom_col(position = position_dodge(width = 0.9), width = 0.8, colour = NA) +
-  facet_grid(. ~ Rainfall,
-             labeller = labeller(Rainfall = function(x) paste0(x, " mm Addition")),
-             scales = "free_x", space = "free") +
+  geom_col(colour="black",width=0.5,    
+           position=position_dodge(0.5)) +
+facet_grid(. ~ Rainfall,
+           labeller = labeller(Rainfall = c(
+             "0"  = "A. No Addition",
+             "5"  = "B. 5 mm Addition",
+             "10" = "C. 10 mm Addition"
+           )),
+           scales = "free_x", space = "free") +
   scale_fill_manual(values = TYPE_colors_named) +
-  labs(x = "Time", y = "Time over threshold (%)") +
+  labs(x = "Time", y = "Time above moisture threshold (%)") +
   scale_y_continuous(limits = c(0, 75), expand = c(0, 0)) +   # change upper limit as desired
-  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) + # widen gap between the two period clusters
+  scale_x_discrete(labels = c("4–24 h" = "Day 1", "24–48 h" = "Day 2"),
+                 expand = expansion(add = c(0.6, 0.6))) +
   theme_classic(base_size = 16) +
   theme(
     panel.spacing = unit(1, "lines"),
@@ -778,13 +677,17 @@ p2 <- ggplot(plot_df, aes(x = period, y = pct, fill = TYPE)) +
     legend.position = "top"
   ) +
   theme(
-  legend.position = c(0.05, 0.92),
+  legend.position = c(0.01, 0.99),
   legend.justification = c(0, 1),
   legend.background = element_blank(),
   legend.box.background = element_blank(),
   legend.title = element_blank())
 
 print(p2)
+
+# save plot
+ggsave(filename = file.path(fig_dir, "microphase1_pct_time_wet_grouped.jpg"),
+       plot = p2, device = "jpeg", width = 8, height = 6, dpi = 300)
 
 ```
 
@@ -1035,7 +938,7 @@ print(summary_table)
 ```{r}
 #| label: three-way ANOVAs at key time points
 
-# uses the ANOVA function laoded in the preparations steps chunk
+# uses the ANOVA function loaded in the preparations steps chunk
 
 # Separate into dfs for the key time points (8, 20, 32, 44)
 micro1_8h_df <- micro1_df |>
@@ -1335,17 +1238,17 @@ th <- 15
 # --------------------------
 # 1) compute hours above threshold with 6-24 and 24-42 breakdown
 # --------------------------
-micro2_h_above_15pct_moisture <- micro2_means %>%
-  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) %>%
-  arrange(DEPTH, Rainfall, elapsed_time) %>%
-  group_by(DEPTH, Rainfall) %>%
+micro2_h_above_15pct_moisture <- micro2_means |>
+  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  arrange(DEPTH, Rainfall, elapsed_time) |>
+  group_by(DEPTH, Rainfall) |>
   mutate(
     t1 = elapsed_time,
     y1 = LitterMoisture_mean,
     t2 = lead(elapsed_time),
     y2 = lead(LitterMoisture_mean)
   ) %>%
-  filter(!is.na(t2) & !is.na(y1) & !is.na(y2)) %>%
+  filter(!is.na(t2) & !is.na(y1) & !is.na(y2)) |>
   rowwise() %>%
   mutate(
     # above-interval endpoints for the segment (NA if entirely below)
@@ -1492,6 +1395,92 @@ ggsave(filename = file.path(fig_dir, "microphase2_time_wet_by_depth_and_rainfall
        plot = p3, device = "jpeg", width = 9, height = 5, dpi = 300)
 
 
+```
+
+```{r}
+#| label: %-time-above-threshold-plot
+
+
+# ---- compute percent time over threshold (use 24-hour denominators) ----
+micro2_h_above_15pct_moisture <- micro2_h_above_15pct_moisture %>%
+  mutate(
+    pct_time_over_thold_day1 = hours_above_15_6_24  / 18 * 100,
+    pct_time_over_thold_day2 = hours_above_15_24_42 / 18 * 100
+  )
+
+# ---- pivot to long format so both periods plot ----
+plot_df <- micro2_h_above_15pct_moisture |>
+  pivot_longer(
+    cols = c(pct_time_over_thold_day1, pct_time_over_thold_day2),
+    names_to = "period",
+    values_to = "pct"
+  ) |>
+  mutate(
+    period = case_when(
+      period == "pct_time_over_thold_day1" ~ "6–24 h",
+      period == "pct_time_over_thold_day2" ~ "24–42 h",
+      TRUE ~ period
+    ),
+    period = factor(period, levels = c("6–24 h", "24–42 h")),
+    # ensure DEPTH and Rainfall are factors with consistent ordering
+    DEPTH = factor(DEPTH, levels = unique(DEPTH)),
+    Rainfall = factor(Rainfall, levels = unique(Rainfall))
+  )
+
+# ---- make sure DEPTH_colors_named exists (fallback if not) ----
+if (!exists("DEPTH_colors_named")) {
+  if (exists("DEPTH_colors") && is.character(DEPTH_colors)) {
+    if (is.null(names(DEPTH_colors))) {
+      DEPTH_colors_named <- setNames(DEPTH_colors[seq_along(levels(plot_df$DEPTH))], levels(plot_df$DEPTH))
+    } else {
+      DEPTH_colors_named <- DEPTH_colors
+    }
+  } else {
+    ntype <- length(levels(plot_df$DEPTH))
+    DEPTH_colors_named <- setNames(RColorBrewer::brewer.pal(max(3, ntype), "Dark2")[1:ntype], levels(plot_df$DEPTH))
+  }
+}
+
+# ---- plotting: grouped (dodged) bars by TYPE, faceted by Rainfall ----
+p4 <- ggplot(plot_df, aes(x = period, y = pct, fill = Rainfall)) +
+  geom_col(colour="black",width=0.5,    
+           position=position_dodge(0.5)) +
+facet_grid(. ~ DEPTH,
+           labeller = labeller(DEPTH = c(
+             "0"  = "A. Surface",
+             "1"  = "B. 1 cm Depth",
+             "3" = "C. 3 cm Depth"
+           )),
+           scales = "free_x", space = "free") +
+  scale_fill_manual(
+    values = Rainfall_colors_named,
+    labels = c("0" = "No addition", "5" = "5 mm addition", "10" = "10 mm addition")
+    ) +
+  labs(x = "Time", y = "Time above moisture threshold (%)") +
+  scale_y_continuous(limits = c(0, 105), expand = c(0, 0)) +   # change upper limit as desired
+  scale_x_discrete(labels = c("6–24 h" = "Day 1", "24–42 h" = "Day 2"),
+                 expand = expansion(add = c(0.6, 0.6))) +
+  theme_classic(base_size = 16) +
+  theme(
+    panel.spacing = unit(1, "lines"),
+    strip.background = element_rect(fill = "gray80", color = "black"),
+    strip.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+    axis.text.x = element_text(angle = 0, vjust = 0.5),
+    legend.position = "top"
+  ) +
+  theme(
+  legend.position = c(0.1, 0.92),
+  legend.justification = c(0, 1),
+  legend.background = element_blank(),
+  legend.box.background = element_blank(),
+  legend.title = element_blank())
+
+print(p4)
+
+# save plot
+ggsave(filename = file.path(fig_dir, "microphase2_pct_time_moist_by_day.jpg"),
+       plot = p4, device = "jpeg", width = 8, height = 6, dpi = 300)
 ```
 
 ## iButton Data Plotting
