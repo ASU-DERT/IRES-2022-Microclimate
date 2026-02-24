@@ -653,8 +653,7 @@ if (!exists("TYPE_colors_named")) {
 
 # ---- plotting: grouped (dodged) bars by TYPE, faceted by Rainfall ----
 p2 <- ggplot(plot_df, aes(x = period, y = pct, fill = TYPE)) +
-  geom_col(colour="black",width=0.5,    
-           position=position_dodge(0.5)) +
+  geom_col(width=0.5, position=position_dodge(0.5)) +
 facet_grid(. ~ Rainfall,
            labeller = labeller(Rainfall = c(
              "0"  = "A. No Addition",
@@ -686,7 +685,7 @@ facet_grid(. ~ Rainfall,
 print(p2)
 
 # save plot
-ggsave(filename = file.path(fig_dir, "microphase1_pct_time_wet_grouped.jpg"),
+ggsave(filename = file.path(fig_dir, "Fig4_microphase1_pct_time_wet_grouped.jpg"),
        plot = p2, device = "jpeg", width = 8, height = 6, dpi = 300)
 
 ```
@@ -1443,7 +1442,7 @@ if (!exists("DEPTH_colors_named")) {
 
 # ---- plotting: grouped (dodged) bars by TYPE, faceted by Rainfall ----
 p4 <- ggplot(plot_df, aes(x = period, y = pct, fill = Rainfall)) +
-  geom_col(colour="black",width=0.5,    
+  geom_col(width=0.5,    
            position=position_dodge(0.5)) +
 facet_grid(. ~ DEPTH,
            labeller = labeller(DEPTH = c(
@@ -1454,7 +1453,7 @@ facet_grid(. ~ DEPTH,
            scales = "free_x", space = "free") +
   scale_fill_manual(
     values = Rainfall_colors_named,
-    labels = c("0" = "No addition", "5" = "5 mm addition", "10" = "10 mm addition")
+    labels = c("0" = "0 mm", "5" = "5 mm", "10" = "10 mm")
     ) +
   labs(x = "Time", y = "Time above moisture threshold (%)") +
   scale_y_continuous(limits = c(0, 105), expand = c(0, 0)) +   # change upper limit as desired
@@ -1470,7 +1469,7 @@ facet_grid(. ~ DEPTH,
     legend.position = "top"
   ) +
   theme(
-  legend.position = c(0.1, 0.92),
+  legend.position = c(0.15, 0.92),
   legend.justification = c(0, 1),
   legend.background = element_blank(),
   legend.box.background = element_blank(),
@@ -1479,7 +1478,7 @@ facet_grid(. ~ DEPTH,
 print(p4)
 
 # save plot
-ggsave(filename = file.path(fig_dir, "microphase2_pct_time_moist_by_day.jpg"),
+ggsave(filename = file.path(fig_dir, "SI_Fig1_microphase2_pct_time_moist_by_day.jpg"),
        plot = p4, device = "jpeg", width = 8, height = 6, dpi = 300)
 ```
 
@@ -1673,7 +1672,7 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir, "Fig5_microphase2_litter_and_temp.jpg"),
+       file.path(fig_dir, "Fig6_microphase2_litter_and_temp.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
