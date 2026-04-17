@@ -241,6 +241,10 @@ micro1_df <- micro1_df |>
            Littercond == "Brown" &
            elapsed_time == 48 &
            LitterMoisturePct > 100))
+
+# save the cleaned data frame for later use
+write_csv(micro1_df, file.path(data_dir,"microphase1_L2_data.csv"))
+
 ```
 
 ## Litter Data Plotting
@@ -255,6 +259,9 @@ micro1_means <- micro1_df |>
             n=n(), 
             sd=sd(LitterMoisturePct, na.rm=TRUE), 
             se=sd/sqrt(n))
+
+# save the litter moisture mean data frame for later use
+write_csv(micro1_means, file.path(data_dir,"microphase1_L2_litter_means.csv"))
 ```
 
 ```{r}
@@ -1053,6 +1060,9 @@ micro2_df <- micro2_df |>
 micro2_df <- micro2_df |>
   filter(!(Rainfall == "0" & elapsed_time == 42 & LitterMoisturePct > 35))
 
+# save the L2 litter moisture data frame for later use
+write_csv(micro2_df, file.path(data_dir,"microphase2_L2_data.csv"))
+
 ```
 
 ## Litter Data Plotting
@@ -1067,6 +1077,9 @@ micro2_means <- micro2_df |>
             n=n(), 
             sd=sd(LitterMoisturePct, na.rm=TRUE), 
             se=sd/sqrt(n))
+
+# save the litter moisture mean data frame for later use
+write_csv(micro2_means, file.path(data_dir,"microphase2_L2_litter_means.csv"))
 ```
 
 ```{r}

@@ -14,7 +14,7 @@ This file works up met station data from the 2022 IRES Microclimate project, mic
 NOTE: The storage location for the met data files has been changed to the DERT Dropbox. Location needs to be updated (use config) for reading and writing files for this script to run properly. HT 2026-01-29
 
 File written: 22 July 2025, Heather Throop\
-Last update:
+Last update: 5 April 2026, Heather Throop - updated file locations with config.yml file. The sun and moon icons may not be pulling in correctly on some of the figures - may need updating.
 
 ## Preparation Steps
 
@@ -22,7 +22,6 @@ Last update:
 #| echo: false
 #| label: load packages 
 
-library(here) # v. 0.1
 library(stringr) # v. 1.2.0
 library(purrr) # v. 0.2.3
 library(tidyverse)
@@ -31,9 +30,6 @@ library(ggtext)
 library(png)
 library(grid)
 
-# Read in the moon and sun images as grobs
-moon_img <- rasterGrob(readPNG("moon.png"), interpolate = TRUE)
-sun_img <- rasterGrob(readPNG("sun.png"), interpolate = TRUE)
 ```
 
 ## Microphase 1
@@ -41,10 +37,42 @@ sun_img <- rasterGrob(readPNG("sun.png"), interpolate = TRUE)
 ### Met Data Load and Prep
 
 ```{r}
+# Use the stored config file to define the path for the DERT Data & Metadata folder (in ASU Dropbox) 
+DERT_Archives <- config::get()
+
+# Base project paths
+data_dir   <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "data")
+
+icon_dir   <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "icons")
+
+stats_dir  <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "output", "stats")
+
+fig_dir    <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "output", "figures")
+```
+
+```{r}
+# Read in the moon and sun images as grobs
+moon_img <- readPNG(file.path(icon_dir, "moon.png"))
+moon_grob <- rasterGrob(moon_img, interpolate = TRUE)
+
+sun_img <- readPNG(file.path(icon_dir, "sun.png"))
+sun_grob <- rasterGrob(sun_img, interpolate = TRUE)
+```
+
+```{r}
 #| label: pull in met station data
 
 #--read and work up data for microphase 1-----------
-weather_phase1_df = read.csv(here("data", "microphase1_gobabebmet.csv"),header=TRUE)
+
+weather_phase1_df <- read.csv(file.path(data_dir, "microphase1_gobabebmet.csv"),header=TRUE)
 
 weather_phase1_df <- weather_phase1_df |>
   mutate(Datetime = as.POSIXct(Datetime, 
@@ -106,7 +134,7 @@ fog_humidity_m1_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig2A_microphase1_fog_humidity_plot.jpg"),
+       file.path(fig_dir, "Fig2A_microphase1_fog_humidity_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -152,7 +180,7 @@ airtemp_m1_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "microphase1_airtemp_plot.jpg"),
+       file.path(fig_dir, "microphase1_airtemp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -193,10 +221,9 @@ soiltemp_m1_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "microphase1_soiltemp_plot.jpg"),
+       file.path(fig_dir, "microphase1_soiltemp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
-
 ```
 
 ```{r}
@@ -258,7 +285,7 @@ soil_and_air_temp_m1_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig2B_microphase1_soil_and_air_temp_plot.jpg"),
+       file.path(fig_dir, "Fig2B_microphase1_soil_and_air_temp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -279,9 +306,18 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig2_microphase1_weather.jpg"),
+       file.path(fig_dir,"figures", "Fig2_microphase1_weather.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
+```
+
+### Save M1 Data
+
+```{r}
+#| label: save data
+
+# save the cleaned data frame for later use
+write_csv(weather_phase1_df, file.path(data_dir,"microphase1_L2_weather_data.csv"))
 ```
 
 ## Microphase 2
@@ -292,7 +328,7 @@ ggsave(filename =
 #| label: pull in met station data
 
 #--read and work up data for microphase 1-----------
-weather_phase2_df = read.csv(here("data", "microphase2_gobabeb-auss.csv"),header=TRUE)
+weather_phase2_df = read.csv(file.path(data_dir, "microphase2_gobabeb-auss.csv"),header=TRUE)
 
 weather_phase2_df$Station <- as.factor(weather_phase2_df$Station)
 
@@ -400,7 +436,7 @@ fog_humidity_m2_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig4A_microphase2_fog_humidity_plot.jpg"),
+       file.path(fig_dir, "Fig4A_microphase2_fog_humidity_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -445,7 +481,7 @@ airtemp_m2_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "microphase2_airtemp_plot.jpg"),
+       file.path(fig_dir, "microphase2_airtemp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -484,7 +520,7 @@ soiltemp_m2_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "microphase2_soiltemp_plot.jpg"),
+       file.path(fig_dir, "microphase2_soiltemp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 
@@ -552,7 +588,7 @@ soil_and_air_temp_m2_p1
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig4B_microphase2_soil_and_air_temp_plot.jpg"),
+       file.path(fig_dir, "Fig4B_microphase2_soil_and_air_temp_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -572,7 +608,16 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       here("output","figures", "Fig4_microphase2_weather.jpg"),
+       file.path(fig_dir, "Fig4_microphase2_weather.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
+```
+
+### Save M2 Data
+
+```{r}
+#| label: save data
+
+# save the cleaned data frame for later use
+write_csv(weather_phase2_df, file.path(data_dir,"microphase2_L2_weather_data.csv"))
 ```

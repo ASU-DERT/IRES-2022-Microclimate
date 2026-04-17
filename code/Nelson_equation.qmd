@@ -1,0 +1,317 @@
+---
+title: "micro_Nelson_calcs"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
+
+File written: 13 July 2025, Heather Throop\
+Last updated: 2026-01-30 HT - updated file location and directory structure
+
+## Preparation Steps
+
+```{r}
+#| echo: false
+#| label: load packages 
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+```{r}
+# Use the stored config file to define the path for the DERT Data & Metadata folder (in ASU Dropbox) 
+DERT_Archives <- config::get()
+
+# Base project paths
+data_dir   <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "data")
+
+icon_dir   <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "icons")
+
+stats_dir  <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "output", "stats")
+
+fig_dir    <- file.path(DERT_Archives,
+                        "NSF_IRES", "2022_Littermicroclimate",
+                        "HT_compiled", "output", "figures")
+```
+
+```{r}
+#| label: read in data
+  
+micro1_weather_df <- read_csv(file.path(data_dir,"microphase1_L2_weather_data.csv"))
+micro2_weather_df <- read_csv(file.path(data_dir,"microphase2_L2_weather_data.csv"))
+micro1_litter_df <- read_csv(file.path(data_dir,"microphase1_L2_data.csv"))
+micro2_litter_df <- read_csv(file.path(data_dir,"microphase2_L2_data.csv"))
+
+# change litter moisture on a percent basis (LitterMoisturePct) to g/g basis (LitterMoisture) for consistency with Nelson's equation
+micro1_litter_df <- micro1_litter_df |>
+  mutate(LitterMoisture = LitterMoisturePct / 100)
+micro2_litter_df <- micro2_litter_df |>
+  mutate(LitterMoisture = LitterMoisturePct / 100)
+
+# change AirTemp to AirTemperature for consistency with micro1 dataframes
+micro2_weather_df <- micro2_weather_df |>
+  rename(AirTemperature = AirTemp)
+
+```
+
+delG = -(RT/M)*ln(H/100)
+R = 1.987 (constant) # universal gas constant in cal/(mol*K)
+T = temperature in Kelvin 
+M = 18.01528 (constant) # molar mass of water in g/mol
+H = relative humidity (%) 
+
+
+```{r}
+#| label: Nelson-eq-2
+
+# calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson
+
+R <- 1.987 # universal gas constant in cal/(mol*K)
+M <- 18.01528 # molar mass of water in g/mol
+
+micro1_weather_df <- micro1_weather_df |>
+  mutate(
+    T_K = AirTemperature + 273.15, # convert temperature to Kelvin
+    delG = -(R * T_K / M) * log(Humidity / 100), # calculate delG in cal/mol
+    ln_delG = log(delG) # calculate the natural log of delG 
+  )
+
+micro2_weather_df <- micro2_weather_df |>
+  mutate(
+    T_K = AirTemperature + 273.15, # convert temperature to Kelvin
+    delG = -(R * T_K / M) * log(Humidity / 100), # calculate delG in cal/mol
+    ln_delG = log(delG) # calculate the natural log of delG 
+  )
+
+```
+
+## Micro1 Data
+
+```{r}
+
+# Left join micro1_weather_df and micro1_means
+# Filter to keep only rows where Rainfall equals 0
+micro1_nelson_df <- micro1_weather_df |>
+  left_join(
+    micro1_litter_df |>
+      filter(Rainfall == 0),
+    by = "elapsed_time"
+  ) |>
+  filter(!is.na(Species))
+
+```
+
+```{r}
+# Create micro1 scatter plot
+ggplot(micro1_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
+  geom_point() +
+  facet_grid(Species ~ Littercond) +
+  labs(
+    title = "Microphase 1",
+    x = "Relative Humidity (%)",
+    y = "Litter Moisture (g g-1)",
+    caption = ""
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "lightgrey"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+## Micro2 Data
+
+
+```{r}
+
+# Left join micro2_weather_df and micro2_means
+# Filter to keep only rows where Rainfall equals 0, litter is on the surface, and to remove extra met station rows (e.g., Gobabeb data when the station was not recording)
+micro2_nelson_df <- micro2_weather_df |>
+  left_join(
+    micro2_litter_df |>
+      filter(Rainfall == 0)) |>
+      filter(DEPTH == 0) |>
+      filter(!is.na(Rainfall)) |>
+      filter(!is.na(AirTemperature))
+
+```
+
+```{r}
+# Create micro2 scatter plot
+ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
+  geom_point() +
+#  facet_grid(Species ~ Littercond) +
+  labs(
+    title = "Microphase 2",
+    x = "Relative Humidity (%)",
+    y = "Litter Moisture (g g-1)",
+    caption = ""
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "lightgrey"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+```{r}
+#| label: nelson-regression
+  
+  # Perform linear regression to find A and B
+  model <- lm(ln_delG ~ LitterMoisture, data = micro2_nelson_df)
+  
+  # Extract A (intercept) and B (slope)
+  A <- coef(model)[1]
+  B <- coef(model)[2]
+  
+  # Print results
+  cat("Linear Regression Results:\n")
+  cat("A (intercept) =", A, "\n")
+  cat("B (slope) =", B, "\n")
+  cat("ln(G0) =", A, "\n")
+  cat("G0 =", exp(A), "\n\n")
+  
+  # Print model summary for additional statistics
+  print(summary(model))
+  
+  # Create a plot to visualize the fit
+  plot(micro2_nelson_df$LitterMoisture, micro2_nelson_df$ln_delG, 
+       main = "Linear Regression: ln(G) vs m",
+       xlab = "m", ylab = "ln(G)",
+       pch = 16)
+  abline(model, col = "red")
+  
+```
+
+
+```{r}
+# Function to calculate and plot the relationship between m and H
+plot_m_vs_H <- function(A, B, T_value) {
+  # Constants
+  R <- 1.987
+  M <- 18
+  
+  # Function to calculate m from H and T using the derived equation
+  calculate_m <- function(H, T, A, B) {
+    # Calculate the inner term
+    inner_term <- -(R * T / (M * exp(A))) * log(H/100)
+    
+    # Calculate m
+    m <- (1/B) * log(inner_term)
+    return(m)
+  }
+  
+  # Create a sequence of H values for plotting (from 1% to 99%)
+  H_values <- seq(1, 99, by = 0.5)
+  
+  # Calculate corresponding m values
+  m_values <- sapply(H_values, function(h) {
+    tryCatch({
+      calculate_m(h, T_value, A, B)
+    }, error = function(e) {
+      NA  # Return NA for values that cause errors (e.g., log of negative numbers)
+    })
+  })
+  
+  # Remove any NA values that might have occurred due to mathematical constraints
+  valid_indices <- !is.na(m_values)
+  H_valid <- H_values[valid_indices]
+  m_valid <- m_values[valid_indices]
+  
+  # Create the plot
+  plot(H_valid, m_valid, 
+       type = "l", 
+       col = "blue", 
+       lwd = 2,
+       main = paste("Relationship Between H and m at T =", T_value, "K"),
+       xlab = "Relative Humidity H (%)",
+       ylab = "m",
+       xlim = c(min(H_valid), max(H_valid)),
+       ylim = c(min(m_valid, na.rm = TRUE), max(m_valid, na.rm = TRUE)))
+  
+  # Add grid for better readability
+  grid()
+  
+  # Add a note about the equation used
+  mtext(paste("Using: m = (1/B) * ln(-(R*T/(M*exp(A))) * ln(H/100))"), 
+        side = 3, 
+        line = 0.5, 
+        cex = 0.8)
+  
+  # Return the data used for plotting
+  return(data.frame(H = H_valid, m = m_valid))
+}
+
+# Complete workflow function that performs regression and then plots
+analyze_and_plot <- function(data_df, T_for_plot) {
+  # Calculate G using the second equation
+  calculate_G <- function(T, H) {
+    R <- 1.987
+    M <- 18
+    G <- -(R * T / M) * log(H/100)
+    return(G)
+  }
+  
+  # Calculate G and ln(G)
+  data_df$G <- calculate_G(data_df$T, data_df$H)
+  data_df$ln_G <- log(data_df$G)
+  
+  # Perform linear regression to find A and B
+  model <- lm(ln_G ~ m, data = data_df)
+  
+  # Extract A (intercept) and B (slope)
+  A <- coef(model)[1]
+  B <- coef(model)[2]
+  
+  # Print results
+  cat("Linear Regression Results:\n")
+  cat("A (intercept) =", A, "\n")
+  cat("B (slope) =", B, "\n")
+  cat("ln(G0) =", A, "\n")
+  cat("G0 =", exp(A), "\n\n")
+  
+  # Print model summary
+  print(summary(model))
+  
+  # Create regression plot
+  par(mfrow = c(1, 2))  # Set up for two plots side by side
+  
+  # Plot 1: Linear regression
+  plot(data_df$m, data_df$ln_G, 
+       main = "Linear Regression: ln(G) vs m",
+       xlab = "m", ylab = "ln(G)",
+       pch = 16)
+  abline(model, col = "red")
+  
+  # Plot 2: m vs H relationship
+  plot_data <- plot_m_vs_H(A, B, T_for_plot)
+  
+  # Reset plot layout
+  par(mfrow = c(1, 1))
+  
+  # Return all results
+  return(list(
+    model = model, 
+    A = A, 
+    B = B, 
+    G0 = exp(A),
+    plot_data = plot_data
+  ))
+}
+```
+
