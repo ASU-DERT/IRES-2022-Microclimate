@@ -1,5 +1,5 @@
 ---
-title: "micro_Nelson_calcs"
+title: "IRES_microclimate_Nelson_calcs"
 author: "Heather Throop"
 format: html
 editor: visual
@@ -9,10 +9,10 @@ editor_options:
 
 ## Overview
 
-This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
+This code explores the Nelson equation predictions for equilibrium litter moisture content relative to data collect in the field from the 2022 IRES Microclimate project. Data from both microphase 1 and 2 experiments are used. 
 
-File written: 13 July 2025, Heather Throop\
-Last updated: 2026-01-30 HT - updated file location and directory structure
+File written: 2026-04-04, Heather Throop\
+Last updated: 2026-04-18 HT, added code to calculate A and B values for each species and litter condition combination in microphase 1, and to plot the resulting Gibbs equation curves on the microphase 1 scatter plot. 
 
 ## Preparation Steps
 
@@ -34,10 +34,6 @@ data_dir   <- file.path(DERT_Archives,
                         "NSF_IRES", "2022_Littermicroclimate",
                         "HT_compiled", "data")
 
-icon_dir   <- file.path(DERT_Archives,
-                        "NSF_IRES", "2022_Littermicroclimate",
-                        "HT_compiled", "icons")
-
 stats_dir  <- file.path(DERT_Archives,
                         "NSF_IRES", "2022_Littermicroclimate",
                         "HT_compiled", "output", "stats")
@@ -49,7 +45,8 @@ fig_dir    <- file.path(DERT_Archives,
 
 ```{r}
 #| label: read in data
-  
+
+# weather_df files are meterological data collected at the met station, litter_df files are litter moisture data collected from litter moisture manipulation experiments 
 micro1_weather_df <- read_csv(file.path(data_dir,"microphase1_L2_weather_data.csv"))
 micro2_weather_df <- read_csv(file.path(data_dir,"microphase2_L2_weather_data.csv"))
 micro1_litter_df <- read_csv(file.path(data_dir,"microphase1_L2_data.csv"))
@@ -73,7 +70,6 @@ T = temperature in Kelvin
 M = 18.01528 (constant) # molar mass of water in g/mol
 H = relative humidity (%) 
 
-
 ```{r}
 #| label: Nelson-eq-2
 
@@ -82,6 +78,16 @@ H = relative humidity (%)
 R <- 1.987 # universal gas constant in cal/(mol*K)
 M <- 18.01528 # molar mass of water in g/mol
 
+```
+
+## Microphase1 Experiment
+
+### calculations
+
+```{r}
+#| label: m1 data prep for Nelson equation
+
+# calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 1 data
 micro1_weather_df <- micro1_weather_df |>
   mutate(
     T_K = AirTemperature + 273.15, # convert temperature to Kelvin
@@ -89,21 +95,8 @@ micro1_weather_df <- micro1_weather_df |>
     ln_delG = log(delG) # calculate the natural log of delG 
   )
 
-micro2_weather_df <- micro2_weather_df |>
-  mutate(
-    T_K = AirTemperature + 273.15, # convert temperature to Kelvin
-    delG = -(R * T_K / M) * log(Humidity / 100), # calculate delG in cal/mol
-    ln_delG = log(delG) # calculate the natural log of delG 
-  )
-
-```
-
-## Micro1 Data
-
-```{r}
-
 # Left join micro1_weather_df and micro1_means
-# Filter to keep only rows where Rainfall equals 0
+# Filter to keep only rows where Rainfall equals 0 - these are the litter packets that did not receive added rainfall (but still experienced fog)
 micro1_nelson_df <- micro1_weather_df |>
   left_join(
     micro1_litter_df |>
@@ -115,28 +108,204 @@ micro1_nelson_df <- micro1_weather_df |>
 ```
 
 ```{r}
-# Create micro1 scatter plot
-ggplot(micro1_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
+# Create micro1 scatter plot - litter moisture vs humidity, faceted by species and litter condition
+p_micro1 <- ggplot(micro1_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
   facet_grid(Species ~ Littercond) +
   labs(
     title = "Microphase 1",
     x = "Relative Humidity (%)",
-    y = "Litter Moisture (g g-1)",
+    y = expression("Litter Moisture (g g"^{-1}*")"),
     caption = ""
   ) +
   theme_bw() +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
     strip.background = element_rect(fill = "lightgrey"),
     strip.text = element_text(face = "bold")
   )
+p_micro1
 ```
 
-## Micro2 Data
+```{r}
+#| label: calculate A and B values for each species and litter condition combination
 
+# These are the isotherm parameters from Nelson 1984, A is the intercept and B is the slope of the linear regression of ln(G) vs m (litter moisture content in g/g)
+
+# Create a dataframe to store A and B values for each combination
+ab_values <- data.frame()
+
+# Get unique combinations of Species and Littercond
+unique_combos <- unique(micro1_nelson_df[, c("Species", "Littercond")])
+
+# For each Species and Littercond combination
+for(i in 1:nrow(unique_combos)) {
+  current_species <- unique_combos$Species[i]
+  current_littercond <- unique_combos$Littercond[i]
+  
+  # Filter data for this combination
+  subset_data <- micro1_nelson_df[
+    micro1_nelson_df$Species == current_species & 
+    micro1_nelson_df$Littercond == current_littercond, ]
+  
+  # Skip if there's not enough data
+  if(nrow(subset_data) < 3) {
+    cat("Skipping", current_species, "-", current_littercond, "due to insufficient data\n")
+    next
+  }
+  
+  # Perform linear regression
+  model <- lm(ln_delG ~ LitterMoisture, data = subset_data)
+  
+  # Extract A (intercept) and B (slope)
+  A_val <- coef(model)[1]
+  B_val <- coef(model)[2]
+  
+  # Store results
+  ab_values <- rbind(ab_values, data.frame(
+    Species = current_species,
+    Littercond = current_littercond,
+    A = A_val,
+    B = B_val,
+    G0 = exp(A_val),
+    R_squared = summary(model)$r.squared
+  ))
+  
+  # Print results for this combination
+  cat("\n=== Results for", current_species, "-", current_littercond, "===\n")
+  cat("A (intercept) =", A_val, "\n")
+  cat("B (slope) =", B_val, "\n")
+  cat("ln(G0) =", A_val, "\n")
+  cat("G0 =", exp(A_val), "\n")
+  cat("R-squared =", summary(model)$r.squared, "\n")
+  
+  # Create a plot for this combination
+  plot_title <- paste("Linear Regression:", current_species, "-", current_littercond)
+  plot(subset_data$LitterMoisture, subset_data$ln_delG, 
+       main = plot_title,
+       xlab = "Litter Moisture (g g-1)", ylab = "ln(G)",
+       pch = 16)
+  abline(model, col = "red")
+}
+
+# Print the final table of A and B values
+print(ab_values)
+```
+
+The intercept is reasonable relative to other values but the slope is less negative than typical from the literature. This seems to be due to the high range in litter moisture values. Should these be filtered to only include the lowest litter moisture values when ln(G) is -1??
+
+### plot Gibbs curves
 
 ```{r}
+#| label: plot Gibbs curves versus data
+
+# Create an empty list to store dataframes for each combination
+gibbs_curves_list <- list()
+
+# For each Species and Littercond combination with calculated A and B
+for(i in 1:nrow(ab_values)) {
+  # Extract the specific A and B values
+  current_species <- ab_values$Species[i]
+  current_littercond <- ab_values$Littercond[i]
+  current_A <- ab_values$A[i]
+  current_B <- ab_values$B[i]
+  
+# Get average air temperature for this combination
+meanT_micro1 <- mean(micro1_nelson_df$AirTemperature, na.rm = TRUE)
+  
+  # Create a dataframe with humidity range 25-100
+  temp_df <- data.frame(
+    Humidity = seq(25, 100, by = 0.5),
+    Species = current_species,
+    Littercond = current_littercond
+  )
+  
+  # Calculate Gibbs equation values using the specific A and B
+  temp_df$GibbsEqn_m <- (1/current_B) * 
+    (log(((-R*(meanT_micro1 + 273.15))/(M*exp(current_A))) * log(temp_df$Humidity/100)))
+  
+  # Add to the list
+  gibbs_curves_list[[i]] <- temp_df
+}
+
+# Combine all dataframes
+gibbs_curves_df <- do.call(rbind, gibbs_curves_list)
+
+# Add the Gibbs equation lines to the plot
+p_micro1 + geom_line(data = gibbs_curves_df, 
+              aes(x = Humidity, y = GibbsEqn_m), 
+              color = "blue")+
+  labs(title = "Microphase 1 - species and litter condition isotherm parameters used")
+```
+
+```{r}
+#| label: plot Gibbs curves when using values from literature for A and B 
+
+# Gibbs A and B values for three species (Anderson, 1990) 
+# values extracted from Kathe's code
+A_cheatgrass <- 4.9145
+B_cheatgrass <- -18.15
+
+#| label: plot Gibbs curves versus data
+
+#| label: plot Gibbs curves versus data
+
+# Create an empty list to store dataframes for each combination
+gibbs_curves_list <- list()
+
+# Get unique combinations of Species and Littercond
+unique_combos <- unique(micro1_nelson_df[, c("Species", "Littercond")])
+
+# For each Species and Littercond combination
+for(i in 1:nrow(unique_combos)) {
+  # Extract the current species and littercond
+  current_species <- unique_combos$Species[i]
+  current_littercond <- unique_combos$Littercond[i]
+ 
+  # Get average air temperature for all data
+  meanT_micro1 <- mean(micro1_nelson_df$AirTemperature, na.rm = TRUE)
+  
+  # Create a dataframe with humidity range 25-100
+  temp_df <- data.frame(
+    Humidity = seq(25, 100, by = 0.5),
+    Species = current_species,
+    Littercond = current_littercond
+  )
+  
+  # Calculate Gibbs equation values using the stored A and B
+  temp_df$GibbsEqn_m <- (1/B_cheatgrass) * 
+    (log(((-R*(meanT_micro1 + 273.15))/(M*exp(A_cheatgrass))) * log(temp_df$Humidity/100)))
+  
+  # Add to the list
+  gibbs_curves_list[[i]] <- temp_df
+}
+
+# Combine all dataframes
+gibbs_curves_df <- do.call(rbind, gibbs_curves_list)
+
+# Add the Gibbs equation lines to the plot
+p_micro1 + geom_line(data = gibbs_curves_df, 
+              aes(x = Humidity, y = GibbsEqn_m), 
+              color = "blue")+
+  labs(title = "Microphase 1 - Cheatgrass isotherm parameters")
+```
+
+
+
+
+## Microphase2 Experiment
+
+```{r}
+#| label: m2 data prep for Nelson equation
+
+# calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 1 data
+micro2_weather_df <- micro2_weather_df |>
+  mutate(
+    T_K = AirTemperature + 273.15, # convert temperature to Kelvin
+    delG = -(R * T_K / M) * log(Humidity / 100), # calculate delG in cal/mol
+    ln_delG = log(delG) # calculate the natural log of delG 
+  )
 
 # Left join micro2_weather_df and micro2_means
 # Filter to keep only rows where Rainfall equals 0, litter is on the surface, and to remove extra met station rows (e.g., Gobabeb data when the station was not recording)
@@ -152,21 +321,24 @@ micro2_nelson_df <- micro2_weather_df |>
 
 ```{r}
 # Create micro2 scatter plot
-ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
+p_micro2 <- ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
 #  facet_grid(Species ~ Littercond) +
   labs(
     title = "Microphase 2",
     x = "Relative Humidity (%)",
-    y = "Litter Moisture (g g-1)",
+    y = expression("Litter Moisture (g g"^{-1}*")"),
     caption = ""
   ) +
   theme_bw() +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
     strip.background = element_rect(fill = "lightgrey"),
     strip.text = element_text(face = "bold")
   )
+
+p_micro2
 ```
 
 ```{r}
@@ -200,118 +372,34 @@ ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
 
 
 ```{r}
-# Function to calculate and plot the relationship between m and H
-plot_m_vs_H <- function(A, B, T_value) {
-  # Constants
-  R <- 1.987
-  M <- 18
-  
-  # Function to calculate m from H and T using the derived equation
-  calculate_m <- function(H, T, A, B) {
-    # Calculate the inner term
-    inner_term <- -(R * T / (M * exp(A))) * log(H/100)
-    
-    # Calculate m
-    m <- (1/B) * log(inner_term)
-    return(m)
-  }
-  
-  # Create a sequence of H values for plotting (from 1% to 99%)
-  H_values <- seq(1, 99, by = 0.5)
-  
-  # Calculate corresponding m values
-  m_values <- sapply(H_values, function(h) {
-    tryCatch({
-      calculate_m(h, T_value, A, B)
-    }, error = function(e) {
-      NA  # Return NA for values that cause errors (e.g., log of negative numbers)
-    })
-  })
-  
-  # Remove any NA values that might have occurred due to mathematical constraints
-  valid_indices <- !is.na(m_values)
-  H_valid <- H_values[valid_indices]
-  m_valid <- m_values[valid_indices]
-  
-  # Create the plot
-  plot(H_valid, m_valid, 
-       type = "l", 
-       col = "blue", 
-       lwd = 2,
-       main = paste("Relationship Between H and m at T =", T_value, "K"),
-       xlab = "Relative Humidity H (%)",
-       ylab = "m",
-       xlim = c(min(H_valid), max(H_valid)),
-       ylim = c(min(m_valid, na.rm = TRUE), max(m_valid, na.rm = TRUE)))
-  
-  # Add grid for better readability
-  grid()
-  
-  # Add a note about the equation used
-  mtext(paste("Using: m = (1/B) * ln(-(R*T/(M*exp(A))) * ln(H/100))"), 
-        side = 3, 
-        line = 0.5, 
-        cex = 0.8)
-  
-  # Return the data used for plotting
-  return(data.frame(H = H_valid, m = m_valid))
-}
 
-# Complete workflow function that performs regression and then plots
-analyze_and_plot <- function(data_df, T_for_plot) {
-  # Calculate G using the second equation
-  calculate_G <- function(T, H) {
-    R <- 1.987
-    M <- 18
-    G <- -(R * T / M) * log(H/100)
-    return(G)
-  }
-  
-  # Calculate G and ln(G)
-  data_df$G <- calculate_G(data_df$T, data_df$H)
-  data_df$ln_G <- log(data_df$G)
-  
-  # Perform linear regression to find A and B
-  model <- lm(ln_G ~ m, data = data_df)
-  
-  # Extract A (intercept) and B (slope)
-  A <- coef(model)[1]
-  B <- coef(model)[2]
-  
-  # Print results
-  cat("Linear Regression Results:\n")
-  cat("A (intercept) =", A, "\n")
-  cat("B (slope) =", B, "\n")
-  cat("ln(G0) =", A, "\n")
-  cat("G0 =", exp(A), "\n\n")
-  
-  # Print model summary
-  print(summary(model))
-  
-  # Create regression plot
-  par(mfrow = c(1, 2))  # Set up for two plots side by side
-  
-  # Plot 1: Linear regression
-  plot(data_df$m, data_df$ln_G, 
-       main = "Linear Regression: ln(G) vs m",
-       xlab = "m", ylab = "ln(G)",
-       pch = 16)
-  abline(model, col = "red")
-  
-  # Plot 2: m vs H relationship
-  plot_data <- plot_m_vs_H(A, B, T_for_plot)
-  
-  # Reset plot layout
-  par(mfrow = c(1, 1))
-  
-  # Return all results
-  return(list(
-    model = model, 
-    A = A, 
-    B = B, 
-    G0 = exp(A),
-    plot_data = plot_data
-  ))
-}
+
+# calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 2 data
+micro2_nelson_df <- micro2_nelson_df |>
+  mutate(
+#Gibbs equilibrium moisture content
+    GibbsEqn_m = (1/B)*
+        (log(((-R*(AirTemperature + 273.15))/(M*exp(A)))* log(Humidity/100)))
+  )
+
+# calculate mean air temperature for the study period
+meanT_micro2 <- mean(micro2_nelson_df$AirTemperature, na.rm = TRUE)
+
+# Create a new dataframe with x values from 50 to 100
+gibbs_curve_df <- data.frame(Humidity = seq(50, 100, by = 0.5))
+
+# Calculate Gibbs equation values for the range of RH values present in the data, using mean air temperature for the study period (the equation is not very sensitive to temperature within the range of study conditions)
+gibbs_curve_df <- gibbs_curve_df |>
+  mutate(
+    GibbsEqn_m = (1/B)*
+      (log(((-R*(meanT_micro2 + 273.15))/(M*exp(A)))* log(Humidity/100)))
+  )
+
+# Add the Gibbs equation line to the Microphase2 plot
+p_micro2 + 
+  geom_line(data = gibbs_curve_df, aes(x = Humidity, y = GibbsEqn_m), color = "blue", size = 1)
+
 ```
+
+
 
