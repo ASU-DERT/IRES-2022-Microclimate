@@ -9,10 +9,10 @@ editor_options:
 
 ## Overview
 
-This code explores the Nelson equation predictions for equilibrium litter moisture content relative to data collect in the field from the 2022 IRES Microclimate project. Data from both microphase 1 and 2 experiments are used. 
+This code explores the Nelson 1984 equation predictions for equilibrium litter moisture content relative to data collect in the field from the 2022 IRES Microclimate project. Data from both microphase 1 and 2 experiments are used. 
 
 File written: 2026-04-04, Heather Throop\
-Last updated: 2026-04-18 HT, added code to calculate A and B values for each species and litter condition combination in microphase 1, and to plot the resulting Gibbs equation curves on the microphase 1 scatter plot. 
+Last updated: 2026-04-19 HT, added code to calculate A and B values for each species and litter condition combination  and to plot the resulting Gibbs equation curves on scatter plots. 
 
 ## Preparation Steps
 
@@ -26,7 +26,7 @@ sessionInfo()
 ```
 
 ```{r}
-# Use the stored config file to define the path for the DERT Data & Metadata folder (in ASU Dropbox) 
+# Use the stored config file to define the path for the DERT Data & Metadata folder (in HT's ASU Dropbox) 
 DERT_Archives <- config::get()
 
 # Base project paths
@@ -64,6 +64,7 @@ micro2_weather_df <- micro2_weather_df |>
 
 ```
 
+Nelson 1984 equation 2 for Gibbs free energy of water vapor condensation on litter surfaces:
 delG = -(RT/M)*ln(H/100)
 R = 1.987 (constant) # universal gas constant in cal/(mol*K)
 T = temperature in Kelvin 
@@ -73,7 +74,7 @@ H = relative humidity (%)
 ```{r}
 #| label: Nelson-eq-2
 
-# calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson
+# define constants for Nelson equation 2
 
 R <- 1.987 # universal gas constant in cal/(mol*K)
 M <- 18.01528 # molar mass of water in g/mol
@@ -82,10 +83,12 @@ M <- 18.01528 # molar mass of water in g/mol
 
 ## Microphase1 Experiment
 
+Data are from the first IRES Microclimate field experiment in 2022. Litter packets from two species (Stipagrostis sabulicula and Salvadora persica) and two litter conditions (green and brown) were placed on the soil surface and subjected to one of three watering treatments (0, 5, 10 mm). Gravimetic moisture was measured periodically by destructively harvesting samples. Only the surface litter packets that received no added rainfall are used in this analysis.
+
 ### calculations
 
 ```{r}
-#| label: m1 data prep for Nelson equation
+#| label: Microphase1 data prep for Nelson equation
 
 # calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 1 data
 micro1_weather_df <- micro1_weather_df |>
@@ -108,6 +111,8 @@ micro1_nelson_df <- micro1_weather_df |>
 ```
 
 ```{r}
+#| label: Microphase1 scatter plot 
+
 # Create micro1 scatter plot - litter moisture vs humidity, faceted by species and litter condition
 p_micro1 <- ggplot(micro1_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
@@ -131,7 +136,9 @@ p_micro1
 ```{r}
 #| label: calculate A and B values for each species and litter condition combination
 
-# These are the isotherm parameters from Nelson 1984, A is the intercept and B is the slope of the linear regression of ln(G) vs m (litter moisture content in g/g)
+# These are the isotherm parameters from Nelson 1984, A is the intercept and B is the slope of the 
+# linear regression of ln(G) vs m (litter moisture content in g/g)
+# Nelson assumes that temperature is constant, which in reality it was not. 
 
 # Create a dataframe to store A and B values for each combination
 ab_values <- data.frame()
@@ -139,7 +146,7 @@ ab_values <- data.frame()
 # Get unique combinations of Species and Littercond
 unique_combos <- unique(micro1_nelson_df[, c("Species", "Littercond")])
 
-# For each Species and Littercond combination
+# For each unique Species and Littercond combination
 for(i in 1:nrow(unique_combos)) {
   current_species <- unique_combos$Species[i]
   current_littercond <- unique_combos$Littercond[i]
@@ -155,7 +162,7 @@ for(i in 1:nrow(unique_combos)) {
     next
   }
   
-  # Perform linear regression
+  # Perform linear regression to find A and B
   model <- lm(ln_delG ~ LitterMoisture, data = subset_data)
   
   # Extract A (intercept) and B (slope)
@@ -193,12 +200,12 @@ for(i in 1:nrow(unique_combos)) {
 print(ab_values)
 ```
 
-The intercept is reasonable relative to other values but the slope is less negative than typical from the literature. This seems to be due to the high range in litter moisture values. Should these be filtered to only include the lowest litter moisture values when ln(G) is -1??
+The intercepts are reasonable relative to other values but the slopes is less negative than typical from the literature. This seems to be due to the high range in litter moisture values. Should these be filtered to only include the lowest litter moisture values when ln(G) is -1??
 
-### plot Gibbs curves
+### plot Nelson curves
 
 ```{r}
-#| label: plot Gibbs curves versus data
+#| label: plot Nelson curves (using litter-specific parameters) versus m1 data
 
 # Create an empty list to store dataframes for each combination
 gibbs_curves_list <- list()
@@ -211,17 +218,17 @@ for(i in 1:nrow(ab_values)) {
   current_A <- ab_values$A[i]
   current_B <- ab_values$B[i]
   
-# Get average air temperature for this combination
+# Get average air temperature for the duration of the experiment
 meanT_micro1 <- mean(micro1_nelson_df$AirTemperature, na.rm = TRUE)
   
-  # Create a dataframe with humidity range 25-100
+  # Create a dataframe with humidity range present during this experiment (25-100%)
   temp_df <- data.frame(
     Humidity = seq(25, 100, by = 0.5),
     Species = current_species,
     Littercond = current_littercond
   )
   
-  # Calculate Gibbs equation values using the specific A and B
+  # Calculate Gibbs equation values using the specific A and B values for each species x littercond combination
   temp_df$GibbsEqn_m <- (1/current_B) * 
     (log(((-R*(meanT_micro1 + 273.15))/(M*exp(current_A))) * log(temp_df$Humidity/100)))
   
@@ -240,16 +247,12 @@ p_micro1 + geom_line(data = gibbs_curves_df,
 ```
 
 ```{r}
-#| label: plot Gibbs curves when using values from literature for A and B 
+#| label: plot Nelson curves (literature data) versus data 
 
 # Gibbs A and B values for three species (Anderson, 1990) 
 # values extracted from Kathe's code
 A_cheatgrass <- 4.9145
 B_cheatgrass <- -18.15
-
-#| label: plot Gibbs curves versus data
-
-#| label: plot Gibbs curves versus data
 
 # Create an empty list to store dataframes for each combination
 gibbs_curves_list <- list()
@@ -282,19 +285,20 @@ for(i in 1:nrow(unique_combos)) {
 }
 
 # Combine all dataframes
-gibbs_curves_df <- do.call(rbind, gibbs_curves_list)
+gibbs_curves_cheatgrass_m1_df <- do.call(rbind, gibbs_curves_list)
 
 # Add the Gibbs equation lines to the plot
-p_micro1 + geom_line(data = gibbs_curves_df, 
+p_micro1 + geom_line(data = gibbs_curves_cheatgrass_m1_df, 
               aes(x = Humidity, y = GibbsEqn_m), 
               color = "blue")+
   labs(title = "Microphase 1 - Cheatgrass isotherm parameters")
 ```
 
-
-
-
 ## Microphase2 Experiment
+
+Data are from the second IRES Microclimate experiment in 2022. Litter packets were placed on the soil surface and buried at two depths (1 and 3 cm) and subjected to watering treatments (0, 5, 10 mm). There was only one litter species and condition (brown grass). Gravimetic moisture was measured periodically by destructively harvesting samples. Only the surface litter packets that received no added rainfall are used in this analysis.
+
+### calculations
 
 ```{r}
 #| label: m2 data prep for Nelson equation
@@ -320,10 +324,10 @@ micro2_nelson_df <- micro2_weather_df |>
 ```
 
 ```{r}
-# Create micro2 scatter plot
+#| label: Create micro2 scatter plot
+
 p_micro2 <- ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
-#  facet_grid(Species ~ Littercond) +
   labs(
     title = "Microphase 2",
     x = "Relative Humidity (%)",
@@ -370,9 +374,12 @@ p_micro2
   
 ```
 
+Note that for this experiment the highest litter moisture value is <0.2 g/g, which is much lower than the range of litter moisture values in the microphase 1 experiment. 
+
+### plot Nelson curves
 
 ```{r}
-
+#| label: plot Nelson curves (using litter-specific parameters) versus m2 data
 
 # calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 2 data
 micro2_nelson_df <- micro2_nelson_df |>
@@ -395,10 +402,28 @@ gibbs_curve_df <- gibbs_curve_df |>
       (log(((-R*(meanT_micro2 + 273.15))/(M*exp(A)))* log(Humidity/100)))
   )
 
-# Add the Gibbs equation line to the Microphase2 plot
+# Add the Nelson equation line to the Microphase2 plot
 p_micro2 + 
-  geom_line(data = gibbs_curve_df, aes(x = Humidity, y = GibbsEqn_m), color = "blue", size = 1)
+  geom_line(data = gibbs_curve_df, aes(x = Humidity, y = GibbsEqn_m), color = "blue", size = 1) +
+  labs(title = "Microphase 2 - Cheatgrass isotherm parameters")
 
+```
+
+```{r}
+#| label: plot Nelson curves (literature data) versus m2 data 
+
+# Calculate Nelson equation values for the range of RH values present in the data, using mean air temperature for the study period (the equation is not very sensitive to temperature within the range of study conditions)
+gibbs_curve_m2_cheatgrass_df <- gibbs_curve_df |>
+  mutate(
+    GibbsEqn_m = (1/B_cheatgrass)*
+      (log(((-R*(meanT_micro2 + 273.15))/(M*exp(A_cheatgrass)))* log(Humidity/100)))
+  )
+
+# Add the Gibbs equation lines to the plot
+p_micro2 + geom_line(data = gibbs_curve_m2_cheatgrass_df, 
+              aes(x = Humidity, y = GibbsEqn_m), 
+              color = "blue") +
+  labs(title = "Microphase 2 - Cheatgrass isotherm parameters")
 ```
 
 
