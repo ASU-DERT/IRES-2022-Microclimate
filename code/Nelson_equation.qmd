@@ -62,6 +62,9 @@ micro2_litter_df <- micro2_litter_df |>
 micro2_weather_df <- micro2_weather_df |>
   rename(AirTemperature = AirTemp)
 
+# read in the isotherm parameters from Anderson 1990 
+Anderson_values <- read_csv(file.path(data_dir, "Anderson1990_data.csv"))
+
 ```
 
 Nelson 1984 equation 2 for Gibbs free energy of water vapor condensation on litter surfaces:
@@ -118,7 +121,7 @@ p_micro1 <- ggplot(micro1_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
   facet_grid(Species ~ Littercond) +
   labs(
-    title = "Microphase 1",
+  #  title = "Microphase 1",
     x = "Relative Humidity (%)",
     y = expression("Litter Moisture (g g"^{-1}*")"),
     caption = ""
@@ -207,6 +210,8 @@ The intercepts are reasonable relative to other values but the slopes is less ne
 ```{r}
 #| label: plot Nelson curves (using litter-specific parameters) versus m1 data
 
+# parameters A and B obtained from the linear regression of ln(G) vs m for microphase 1 data - likely not at equilibrium
+
 # Create an empty list to store dataframes for each combination
 gibbs_curves_list <- list()
 
@@ -242,14 +247,14 @@ gibbs_curves_df <- do.call(rbind, gibbs_curves_list)
 # Add the Gibbs equation lines to the plot
 p_micro1 + geom_line(data = gibbs_curves_df, 
               aes(x = Humidity, y = GibbsEqn_m), 
-              color = "blue")+
+              color = "blue") +
   labs(title = "Microphase 1 - species and litter condition isotherm parameters used")
 ```
 
 ```{r}
-#| label: plot Nelson curves (literature data) versus data 
+#| label: plot Nelson curves (literature data) versus cheatgrass data 
 
-# Gibbs A and B values for three species (Anderson, 1990) 
+# Gibbs A and B values obtained from lab studies (Anderson, 1990) 
 # values extracted from Kathe's code
 A_cheatgrass <- 4.9145
 B_cheatgrass <- -18.15
@@ -294,6 +299,93 @@ p_micro1 + geom_line(data = gibbs_curves_cheatgrass_m1_df,
   labs(title = "Microphase 1 - Cheatgrass isotherm parameters")
 ```
 
+```{r}
+#| label: plot Nelson curves versus Anderson data for micro1 - cheatgrass and quaking aspen
+
+# Filter Anderson_values to only use Temperature = 278 and AD_DE = "AD"
+anderson_filtered <- Anderson_values[Anderson_values$Temperature == 278 & 
+                                    Anderson_values$AD_DE == "AD", ]
+
+# Create an empty list to store dataframes for each combination
+gibbs_curves_list <- list()
+
+# Get unique combinations of Species and Littercond
+unique_combos <- unique(micro1_nelson_df[, c("Species", "Littercond")])
+
+# For each Species and Littercond combination
+for(i in 1:nrow(unique_combos)) {
+  # Extract the current species and littercond
+  current_species <- unique_combos$Species[i]
+  current_littercond <- unique_combos$Littercond[i]
+  
+  # Map the species and littercond to Anderson values
+  anderson_species <- ifelse(current_species == "grass", "Cheatgrass", 
+                           ifelse(current_species == "shrub", "QuakingAspen", NA))
+  
+  anderson_littercond <- ifelse(current_littercond == "Brown", "weathered",
+                              ifelse(current_littercond == "Green", "fresh", NA))
+  
+  # Skip if we don't have a valid mapping
+  if(is.na(anderson_species) || is.na(anderson_littercond)) {
+    next
+  }
+  
+  # Find the matching row in anderson_filtered
+  # Make sure we're using column names that exist in the dataset
+  matching_row <- anderson_filtered[anderson_filtered$Species == anderson_species & 
+                                   anderson_filtered$Littercond == anderson_littercond, ]
+  
+  # If we found a match, use those A and B values
+  if(nrow(matching_row) > 0) {
+    current_A <- matching_row$A[1]  # Take the first match if multiple
+    current_B <- matching_row$B[1]
+    
+    # Get average air temperature for all data
+    meanT_micro1 <- mean(micro1_nelson_df$AirTemperature, na.rm = TRUE)
+    
+    # Create a dataframe with humidity range 25-100
+    temp_df <- data.frame(
+      Humidity = seq(25, 100, by = 0.5),
+      Species = current_species,
+      Littercond = current_littercond
+    )
+    
+    # Calculate Gibbs equation values using the matched A and B
+    temp_df$GibbsEqn_m <- (1/current_B) * 
+      (log(((-R*(meanT_micro1 + 273.15))/(M*exp(current_A))) * log(temp_df$Humidity/100)))
+    
+    # Add to the list
+    gibbs_curves_list[[i]] <- temp_df
+  } # Close the if(nrow(matching_row) > 0) block
+} # Close the for loop
+
+# Combine all dataframes (only if there are any valid matches)
+if(length(gibbs_curves_list) > 0) {
+  gibbs_curves_df <- do.call(rbind, gibbs_curves_list)
+  
+  # Create and return the plot
+  m1_plot_Nelson <- p_micro1 + 
+    geom_line(data = gibbs_curves_df, 
+              aes(x = Humidity, y = GibbsEqn_m), color = "blue") #+
+   # labs(title = "Microphase 1 - Isotherm parameters (Anderson 1990, T=278K)") 
+
+  # Return the plot
+  m1_plot_Nelson
+} else {
+  # If no matches found, return the original plot with a warning message
+  warning("No matching A and B values found in Anderson_values dataset")
+  p_micro1
+}
+
+# save the plot
+ggsave(filename = file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", 
+                            "HT_compiled", "output", "figures", "Nelson_micro1.jpg"),
+      plot = m1_plot_Nelson,
+       width = 8, height = 6, dpi = 300)
+```
+
+
+
 ## Microphase2 Experiment
 
 Data are from the second IRES Microclimate experiment in 2022. Litter packets were placed on the soil surface and buried at two depths (1 and 3 cm) and subjected to watering treatments (0, 5, 10 mm). There was only one litter species and condition (brown grass). Gravimetic moisture was measured periodically by destructively harvesting samples. Only the surface litter packets that received no added rainfall are used in this analysis.
@@ -329,7 +421,7 @@ micro2_nelson_df <- micro2_weather_df |>
 p_micro2 <- ggplot(micro2_nelson_df, aes(x = Humidity, y = LitterMoisture)) +
   geom_point() +
   labs(
-    title = "Microphase 2",
+  #  title = "Microphase 2",
     x = "Relative Humidity (%)",
     y = expression("Litter Moisture (g g"^{-1}*")"),
     caption = ""
@@ -381,6 +473,8 @@ Note that for this experiment the highest litter moisture value is <0.2 g/g, whi
 ```{r}
 #| label: plot Nelson curves (using litter-specific parameters) versus m2 data
 
+# parameters A and B obtained from the linear regression of ln(G) vs m for microphase 2 data - likely not at equilibrium
+
 # calculate Gibbs free energy (delG) for water vapor condensation using Equation 2 from Nelson for microphase 2 data
 micro2_nelson_df <- micro2_nelson_df |>
   mutate(
@@ -413,6 +507,12 @@ p_micro2 +
 #| label: plot Nelson curves (literature data) versus m2 data 
 
 # Calculate Nelson equation values for the range of RH values present in the data, using mean air temperature for the study period (the equation is not very sensitive to temperature within the range of study conditions)
+
+#assign values for A and B for cheatgrass from Anderson 1990. This is the weathered adsorbing material at 278K.
+
+A_cheatgrass <- 4.945
+B_cheatgrass <- -16.72
+
 gibbs_curve_m2_cheatgrass_df <- gibbs_curve_df |>
   mutate(
     GibbsEqn_m = (1/B_cheatgrass)*
@@ -420,11 +520,19 @@ gibbs_curve_m2_cheatgrass_df <- gibbs_curve_df |>
   )
 
 # Add the Gibbs equation lines to the plot
-p_micro2 + geom_line(data = gibbs_curve_m2_cheatgrass_df, 
+Nelson_m2 <- p_micro2 + geom_line(data = gibbs_curve_m2_cheatgrass_df, 
               aes(x = Humidity, y = GibbsEqn_m), 
-              color = "blue") +
-  labs(title = "Microphase 2 - Cheatgrass isotherm parameters")
+              color = "blue") #+
+ # labs(title = "Microphase 2 - Cheatgrass isotherm parameters")
+Nelson_m2
+
+# save the plot
+ggsave(filename = file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", 
+                            "HT_compiled", "output", "figures", "Nelson_micro2.jpg"),
+      plot = Nelson_m2,
+       width = 8, height = 6, dpi = 300)
 ```
+
 
 
 
