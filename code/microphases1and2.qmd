@@ -7,14 +7,14 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Overview
+##Overview
 
 This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
 File written: 13 July 2025, Heather Throop\
 Last updated: 2026-01-30 HT - updated file location and directory structure
 
-## Preparation Steps
+##Preparation Steps
 
 ```{r}
 #| echo: false
@@ -170,9 +170,9 @@ run_threeway_anova <- function(df, response_var, factors,
 
 ```
 
-# Microphase 1
+#Microphase 1
 
-## Data Ingestion & Calculations
+##Data Ingestion & Calculations
 
 ```{r}
 #| label: read in data and calculate derived variables
@@ -247,7 +247,7 @@ write_csv(micro1_df, file.path(data_dir,"microphase1_L2_data.csv"))
 
 ```
 
-## Litter Data Plotting
+##Litter Data Plotting
 
 ```{r}
 #| label: calculate means
@@ -397,7 +397,7 @@ ggsave(filename =
        width = 8, height = 6, dpi = 300)
 ```
 
-### Litter time wet
+###Litter time wet
 
 ```{r}
 #| label: litter-moisture-time-above-threshold
@@ -408,7 +408,7 @@ ggsave(filename =
 th <- 15
 
 micro1_h_above_15pct_moisture <- micro1_means |>
-  select(TYPE, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  dplyr::select(TYPE, Rainfall, elapsed_time, LitterMoisture_mean) |>
   arrange(TYPE, Rainfall, elapsed_time) |>
   group_by(TYPE, Rainfall) |>
   # compute per-segment info using lead()
@@ -495,7 +495,7 @@ print(micro1_h_above_15pct_moisture)
 
 # prepare data with explicit ymin/ymax per stack
 plot_df <- micro1_h_above_15pct_moisture |>
-  select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
+  dplyr::select(TYPE, Rainfall, hours_above_15_0_24, hours_above_15_24_48) |>
   pivot_longer(
     cols = starts_with("hours_above_15_"),
     names_to = "period",
@@ -697,7 +697,7 @@ ggsave(filename = file.path(fig_dir, "Fig4_microphase1_pct_time_wet_grouped.jpg"
 
 ```
 
-## iButton Data Plotting
+##iButton Data Plotting
 
 ```{r}
 #| label: read in L1 iButton CSV
@@ -866,7 +866,7 @@ ggsave(filename =
        width = 8, height = 6, dpi = 300)
 ```
 
-## Combine litter moisture and temperature plots
+##Combine litter moisture and temperature plots
 
 ```{r}
 #| label: Combine plots (FIG3)
@@ -891,7 +891,7 @@ ggsave(filename =
 
 ```
 
-## Litter Moisture ANOVAs
+##Litter Moisture ANOVAs
 
 ```{r}
 #| label: check ANOVA assumptions
@@ -1009,9 +1009,23 @@ print(result_44h)
 sink()
 ```
 
-# Microphase 2
+##Micro1 data export
 
-## Data Ingestion & Calculations
+```{r}
+#| label: export-cleaned-M1-data
+
+# This is the L3 data that will be archived on EDI in April 2026.
+
+# remove intermediate variables not used for analysis
+micro1_clean_df <- micro1_df |>
+  dplyr::select(Species, Littercond, TYPE, Plot, Rainfall, Interval, Datetime, elapsed_time, LitterWetMass, LitterDryMass, LitterMoisturePct)
+
+write_csv(micro1_clean_df, file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", "HT_compiled","data", "microphase1_data_L3.csv"))
+```
+
+#Microphase 2
+
+##Data Ingestion & Calculations
 
 ```{r}
 #| label: read in data and calculate derived variables
@@ -1188,7 +1202,7 @@ ggsave(filename =
 th <- 15
 
 micro2_h_above_15pct_moisture <- micro2_means |>
-  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  dplyr::select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
   arrange(DEPTH, Rainfall, elapsed_time) |>
   group_by(DEPTH, Rainfall) |>
   # compute per-segment info using lead()
@@ -1251,7 +1265,7 @@ th <- 15
 # 1) compute hours above threshold with 6-24 and 24-42 breakdown
 # --------------------------
 micro2_h_above_15pct_moisture <- micro2_means |>
-  select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
+  dplyr::select(DEPTH, Rainfall, elapsed_time, LitterMoisture_mean) |>
   arrange(DEPTH, Rainfall, elapsed_time) |>
   group_by(DEPTH, Rainfall) |>
   mutate(
@@ -1914,4 +1928,18 @@ cat("\n--- Pairwise Comparisons (Rainfall, Tukey) ---\n")
 print(pairs_rain)
 
 sink()
+```
+
+##Micro2 data export
+
+```{r}
+#| label: export-cleaned-M2-data
+
+# This is the L3 data that will be archived on EDI in April 2026.
+
+# remove intermediate variables not used for analysis
+micro2_clean_df <- micro2_df |>
+  dplyr::select(DEPTH, Plot, Rainfall, Interval, Datetime, elapsed_time, LitterWetMass, LitterDryMass, LitterMoisturePct)
+
+write_csv(micro2_clean_df, file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", "HT_compiled","data", "microphase2_data_L3.csv"))
 ```

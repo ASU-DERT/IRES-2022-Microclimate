@@ -208,3 +208,18 @@ print(cld_interaction)
 sink()
 
 ```
+
+##Export Data
+
+```{r}
+#| label: export cleaned data
+
+# This is the L3 data that will be archived on EDI in April 2026.
+
+# remove intermediate variables not used for analysis
+litterWHC_clean_df <- litterWHC_df |>
+  dplyr::select(Species, LitterCond, Bag_ID, LitterDryMassnoBag, MassT0noBag, WHC)
+
+write_csv(litterWHC_clean_df, file.path(DERT_Archives, "NSF_IRES", "2022_Littermicroclimate", "HT_compiled","data", "litter_WHC_L3.csv"))
+
+```
