@@ -12,7 +12,11 @@ editor_options:
 This code works up litter moisture data from the 2022 IRES Microclimate project, both microphase 1 and 2. Original csv file is pulled in, cleaned, analyzed, and graphed.
 
 File written: 13 July 2025, Heather Throop\
-Last updated: 2026-01-30 HT - updated file location and directory structure
+Updates:
+
+2026-01-30 HT - updated file location and directory structure
+
+2026-01-30 HT - added 15% moisture threshold lines
 
 ##Preparation Steps
 
@@ -318,6 +322,8 @@ ggsave(filename =
 ```{r}
 #| label: litter moisture by rainfall 
 
+# Fig 3 panels A-C
+
 micro1_litter_p2 <- micro1_means |>
     mutate(
     Rainfall = fct_recode(Rainfall,
@@ -386,7 +392,8 @@ micro1_litter_p2 <- micro1_means |>
         xmin = 8, xmax = 18, ymin = 137, ymax = 147) +
   # Add sun images in day areas
   annotation_custom(grob = sun_grob, 
-        xmin = 19, xmax = 31, ymin = 136, ymax = 148) 
+        xmin = 19, xmax = 31, ymin = 136, ymax = 148) +
+  geom_hline(yintercept=15, linetype='dotted', color='blue', linewidth = 1.2)
 
 micro1_litter_p2
 
@@ -1180,7 +1187,9 @@ theme(legend.title = element_blank()) +
   annotation_custom(grob = moon_grob, xmin = 34, xmax = 39, ymin = 70, ymax = 75) +
   
   # Add sun images in day areas
-  annotation_custom(grob = sun_grob, xmin = 21, xmax = 26, ymin = 70, ymax = 75) 
+  annotation_custom(grob = sun_grob, xmin = 21, xmax = 26, ymin = 70, ymax = 75) +
+  # Add in 15% moisture threshold lines
+  geom_hline(yintercept=15, linetype='dotted', color='blue', linewidth = 1.2)
 
 micro2_litter_p1
 
@@ -1699,7 +1708,7 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir, "Fig6_microphase2_litter_and_temp.jpg"),
+       file.path(fig_dir, "Fig5_microphase2_litter_and_temp.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```

@@ -14,7 +14,11 @@ This file works up met station data from the 2022 IRES Microclimate project, mic
 NOTE: The storage location for the met data files has been changed to the DERT Dropbox. Location needs to be updated (use config) for reading and writing files for this script to run properly. HT 2026-01-29
 
 File written: 22 July 2025, Heather Throop\
-Last update: 5 April 2026, Heather Throop - updated file locations with config.yml file. The sun and moon icons may not be pulling in correctly on some of the figures - may need updating.
+Last update:
+
+5 April 2026, Heather Throop - updated file locations with config.yml file. The sun and moon icons may not be pulling in correctly on some of the figures - may need updating.
+
+13 July 2026, Heather Throop - Swapped 1st and 2nd y-axis legends for fog and RH plots in response to reviewer request. Updated figure numbers (for Cambridge Prisms ms). Fixed the names of sun and moon icons that was preventing them from pulling in properly.
 
 ## Preparation Steps
 
@@ -29,6 +33,7 @@ library(lubridate)
 library(ggtext)
 library(png)
 library(grid)
+library(cowplot)
 
 ```
 
@@ -96,31 +101,33 @@ night2_end_m1 <- 43
 ### Plot Data
 
 ```{r}
-#| label: fog and humidity plot (Fig 2A)
+#| label: fog and humidity plot (Fig 2A) v2 - axes flipped
+
+# axes flipped in response to reviewer comments 
 
 coeff <- 100
 
 fog_humidity_m1_p1 <- weather_phase1_df |>
   ggplot(aes(x=elapsed_time)) +
-  geom_bar(aes(y=Fog), stat = "identity", fill='black') +
+  geom_bar(aes(y=Fog * coeff), stat = "identity", fill='black') +
   # Smoothed Humidity line
   stat_smooth(
-    aes(y = Humidity / coeff),
+    aes(y = Humidity),
     method = "loess", span = 0.3, se = FALSE,
     color = "#1b98e0", size = 1
   ) +
   # Smoothed Humidity area
   stat_smooth(
-    aes(y = Humidity / coeff),
+    aes(y = Humidity),
     method = "loess", span = 0.3, se = FALSE,
     geom = "area", fill = "#1b98e0", alpha = 0.2
   ) +
-   ylim(0,1) +
-  scale_y_continuous(name = "Fog (mm)", 
-                     sec.axis = sec_axis(~.*coeff, 
-                                         name="Relative Humidity (%)"),expand=c(0,0)) +
+   ylim(0,100) +
+  scale_y_continuous(name = "Relative Humidity (%)", 
+                     sec.axis = sec_axis(~./coeff, 
+                                         name="Fog (mm)"),expand=c(0,0)) +
   xlab("Elapsed Time (hours)") + 
-  ylab("Fog (mm)") +
+  ylab("Relative Humidity (%)") +
   # Add "A." in upper-left corner
   annotate("text", x = 0, y = Inf, label = "A.", hjust = -0.5, 
            vjust = 1.5, size = 6) +
@@ -131,10 +138,9 @@ fog_humidity_m1_p1 <- weather_phase1_df |>
   theme(axis.text.x = element_text(vjust = 0.5)) +
   scale_x_continuous(limits = c(0, 48), expand = c(0,0))
 fog_humidity_m1_p1
-
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir, "Fig2A_microphase1_fog_humidity_plot.jpg"),
+       file.path(fig_dir, "Fig2A_microphase1_fog_humidity_plot_v2.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -160,12 +166,12 @@ airtemp_m1_p1 <- weather_phase1_df |>
   geom_line(aes(y = AirTemperature)) +
 
   # Add moon images
-  annotation_custom(moon_img, xmin = 10, xmax = 16, ymin = 26, ymax = 32) +
-  annotation_custom(moon_img, xmin = 34, xmax = 40, ymin = 26, ymax = 32) +
+  annotation_custom(moon_grob, xmin = 10, xmax = 16, ymin = 26, ymax = 32) +
+  annotation_custom(moon_grob, xmin = 34, xmax = 40, ymin = 26, ymax = 32) +
 
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 22, xmax = 28, ymin = 26, ymax = 32) +
- # annotation_custom(sun_img, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
+  annotation_custom(sun_grob, xmin = 22, xmax = 28, ymin = 26, ymax = 32) +
+ # annotation_custom(sun_grob, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
 
   # Plot formatting
   xlab("Elapsed Time (h)") + 
@@ -201,12 +207,12 @@ soiltemp_m1_p1 <- weather_phase1_df |>
   geom_line(aes(y = AirTemperature)) +
 
   # Add moon images
-  annotation_custom(moon_img, xmin = 10, xmax = 16, ymin = 30, ymax = 36) +
-  annotation_custom(moon_img, xmin = 34, xmax = 40, ymin = 30, ymax = 36) +
+  annotation_custom(moon_grob, xmin = 10, xmax = 16, ymin = 30, ymax = 36) +
+  annotation_custom(moon_grob, xmin = 34, xmax = 40, ymin = 30, ymax = 36) +
 
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 22, xmax = 28, ymin = 30, ymax = 36) +
- # annotation_custom(sun_img, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
+  annotation_custom(sun_grob, xmin = 22, xmax = 28, ymin = 30, ymax = 36) +
+ # annotation_custom(sun_grob, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
 
   # Plot formatting
   xlab("Elapsed Time (h)") + 
@@ -249,12 +255,12 @@ soil_and_air_temp_m1_p1 <- weather_phase1_df |>
             method = "loess",   # good for smaller datasets
             span = 0.3)  +       # adjust smoothing (lower = more wiggly, higher = smoother)
   # Add moon images
-  annotation_custom(moon_img, xmin = 11, xmax = 15, ymin = 30, ymax = 34) +
-  annotation_custom(moon_img, xmin = 35, xmax = 39, ymin = 30, ymax = 34) +
+  annotation_custom(moon_grob, xmin = 11, xmax = 15, ymin = 30, ymax = 34) +
+  annotation_custom(moon_grob, xmin = 35, xmax = 39, ymin = 30, ymax = 34) +
 
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 23, xmax = 27, ymin = 30, ymax = 34) +
- # annotation_custom(sun_img, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
+  annotation_custom(sun_grob, xmin = 23, xmax = 27, ymin = 30, ymax = 34) +
+ # annotation_custom(sun_grob, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
 
   # Add "B." in upper-left corner
   annotate("text", x = 0, y = Inf, label = "B.", hjust = -0.5, 
@@ -306,7 +312,7 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir,"figures", "Fig2_microphase1_weather.jpg"),
+       file.path(fig_dir, "Fig2_microphase1_weather.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -399,33 +405,33 @@ weather_phase2_gob_df <- weather_phase2_df |>
 ### Plot Data
 
 ```{r}
-#| label: fog and humidity plot (Fig 4A)
+#| label: fog and humidity plot (SI Figure XXX)
 
 fog_humidity_m2_p1 <- weather_phase2_gob_df |>
   ggplot(aes(x=elapsed_time)) +
-  geom_bar(aes(y=Fog), stat = "identity", fill='black') +
- # geom_line(aes(y=Humidity / coeff), color = "#1b98e0") +
- # geom_area(aes(y=Humidity / coeff), fill = "#1b98e0", alpha=0.2) +
+  geom_bar(aes(y=Fog * coeff), stat = "identity", fill='black') +
+ # geom_line(aes(y=Humidity), color = "#1b98e0") +
+ # geom_area(aes(y=Humidity), fill = "#1b98e0", alpha=0.2) +
     # Smoothed Humidity line
   stat_smooth(
-    aes(y = Humidity / coeff),
+    aes(y = Humidity),
     method = "loess", span = 0.3, se = FALSE,
     color = "#1b98e0", size = 1
   ) +
   # Smoothed Humidity area
   stat_smooth(
-    aes(y = Humidity / coeff),
+    aes(y = Humidity),
     method = "loess", span = 0.3, se = FALSE,
     geom = "area", fill = "#1b98e0", alpha = 0.2
   ) +
-  ylim(0,2) +
-  scale_y_continuous(name = "Fog (mm)", 
-                     sec.axis = sec_axis(~.*coeff, name="Relative Humidity (%)"),expand=c(0,0)) +
+  ylim(0,200) +
+  scale_y_continuous(name = "Relative Humidity (%)", 
+                     sec.axis = sec_axis(~./coeff, name="Fog (mm)"),expand=c(0,0)) +
   # Add "A." in upper-left corner
   annotate("text", x = 0, y = Inf, label = "A.", hjust = -0.5, 
            vjust = 1.5, size = 6) +
   xlab("Elapsed Time (hours)") + 
-  ylab("Fog (mm)") +
+  ylab("Relative Humidity (%)") +
   theme_bw() +
   theme(text = element_text(size = 15)) +
   theme(panel.grid.major = element_blank()) +
@@ -436,7 +442,7 @@ fog_humidity_m2_p1
 
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir, "Fig4A_microphase2_fog_humidity_plot.jpg"),
+       file.path(fig_dir, "SI_Fig1A_microphase2_fog_humidity_plot.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
@@ -462,11 +468,11 @@ airtemp_m2_p1 <- weather_phase2_gob_df |>
   geom_line(aes(y = AirTemp)) +
 
   # Add moon images
-  annotation_custom(moon_img, xmin = 10, xmax = 15, ymin = 19, ymax = 24) +
-  annotation_custom(moon_img, xmin = 34, xmax = 39, ymin = 19, ymax = 24) +
+  annotation_custom(moon_grob, xmin = 10, xmax = 15, ymin = 19, ymax = 24) +
+  annotation_custom(moon_grob, xmin = 34, xmax = 39, ymin = 19, ymax = 24) +
   
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 21, xmax = 26, ymin = 19, ymax = 24) +
+  annotation_custom(sun_grob, xmin = 21, xmax = 26, ymin = 19, ymax = 24) +
 
   # Plot formatting
   xlab("Elapsed Time (h)") + 
@@ -501,11 +507,11 @@ soiltemp_m2_p1 <- weather_phase2_gob_df |>
   geom_line(aes(y = SoilTemp)) +
 
   # Add moon images
-  annotation_custom(moon_img, xmin = 10, xmax = 15, ymin = 24, ymax = 29) +
-  annotation_custom(moon_img, xmin = 34, xmax = 39, ymin = 24, ymax = 29) +
+  annotation_custom(moon_grob, xmin = 10, xmax = 15, ymin = 24, ymax = 29) +
+  annotation_custom(moon_grob, xmin = 34, xmax = 39, ymin = 24, ymax = 29) +
 
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 21, xmax = 26, ymin = 24, ymax = 29) +
+  annotation_custom(sun_grob, xmin = 21, xmax = 26, ymin = 24, ymax = 29) +
 
   # Plot formatting
   xlab("Elapsed Time (h)") + 
@@ -527,7 +533,7 @@ ggsave(filename =
 ```
 
 ```{r}
-#| label: soil+air temperature plot (Fig. 4B)
+#| label: soil+air temperature plot (SI Fig. 1B)
 
 soil_and_air_temp_m2_p1 <- weather_phase2_gob_df |>
   ggplot(aes(x = elapsed_time)) +
@@ -552,12 +558,12 @@ soil_and_air_temp_m2_p1 <- weather_phase2_gob_df |>
             span = 0.3)  +       # adjust smoothing (lower = more wiggly, higher = smoother)
   
   # Add moon images
-  annotation_custom(moon_img, xmin = 11, xmax = 15, ymin = 25, ymax = 29) +
-  annotation_custom(moon_img, xmin = 35, xmax = 39, ymin = 25, ymax = 29) +
+  annotation_custom(moon_grob, xmin = 11, xmax = 15, ymin = 25, ymax = 29) +
+  annotation_custom(moon_grob, xmin = 35, xmax = 39, ymin = 25, ymax = 29) +
 
   # Add sun images in day areas
-  annotation_custom(sun_img, xmin = 23, xmax = 27, ymin = 25, ymax = 29) +
- # annotation_custom(sun_img, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
+  annotation_custom(sun_grob, xmin = 23, xmax = 27, ymin = 25, ymax = 29) +
+ # annotation_custom(sun_grob, xmin = 39, xmax = 41, ymin = 30, ymax = 36) +
 
   # Add "B." in upper-left corner
   annotate("text", x = 0, y = Inf, label = "B.", hjust = -0.5, 
@@ -608,7 +614,7 @@ final_plot
 
 # save the plot
 ggsave(filename = 
-       file.path(fig_dir, "Fig4_microphase2_weather.jpg"),
+       file.path(fig_dir, "SI_Fig1_microphase2_weather.jpg"),
        device = "jpeg",
        width = 8, height = 6, dpi = 300)
 ```
